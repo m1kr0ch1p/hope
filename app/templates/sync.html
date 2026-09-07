@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}
+Sincronização | HOPE
+{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div>
+    <h1>Sincronização CNPD</h1>
+    <p>
+      Execute uma coleta controlada do painel público do CNPD.
+    </p>
+  </div>
+</section>
+
+{% if sync_ok %}
+<section class="notice success">
+  <strong>Sincronização concluída.</strong>
+  Os dados foram gravados no SQLite.
+  <a href="/">Abrir casos</a>
+</section>
+{% endif %}
+
+{% if sync_error %}
+<section class="notice error">
+  <strong>Erro durante a sincronização:</strong>
+  <pre>{{ sync_error }}</pre>
+</section>
+{% endif %}
+
+<section class="card">
+  <form
+    class="sync-form"
+    method="post"
+    action="/sincronizar/cnpd"
+  >
+    <label>
+      Página inicial
+      <input
+        name="start_page"
+        type="number"
+        min="0"
+        value="0"
+      >
+    </label>
+
+    <label>
+      Máximo de páginas
+      <input
+        name="max_pages"
+        type="number"
+        min="1"
+        max="10000"
+        value="1"
+      >
+    </label>
+
+    <label>
+      Ordenação
+      <select name="order">
+        <option value="MAIS_RECENTE">
+          Mais recente
+        </option>
+      </select>
+    </label>
+
+    <label class="checkbox-label">
+      <input
+        name="download_images"
+        type="checkbox"
+        value="true"
+      >
+      Baixar imagens oficiais disponíveis
+    </label>
+
+    <button
+      class="button primary"
+      type="submit"
+    >
+      Iniciar sincronização
+    </button>
+  </form>
+
+  <p class="small muted">
+    Comece com uma página e sem imagens. Depois valide os registros
+    antes de aumentar o volume da coleta.
+  </p>
+</section>
+
+<section class="card">
+  <h2>Histórico de coletas</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Início</th>
+          <th>Fim</th>
+          <th>Status</th>
+          <th>Página inicial</th>
+          <th>Páginas</th>
+          <th>Registros</th>
+          <th>Erro</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for collection in collections %}
+        <tr>
+          <td>#{{ collection["id"] }}</td>
+          <td>{{ collection["iniciada_em"] }}</td>
+          <td>{{ collection["finalizada_em"] or "-" }}</td>
+          <td>{{ collection["status"] }}</td>
+          <td>{{ collection["pagina_inicial"] }}</td>
+          <td>{{ collection["paginas_lidas"] }}</td>
+          <td>{{ collection["registros_lidos"] }}</td>
+          <td class="error-text">
+            {{ collection["erro"] or "-" }}
+          </td>
+        </tr>
+        {% endfor %}
+
+        {% if not collections %}
+        <tr>
+          <td
+            colspan="8"
+            class="empty"
+          >
+            Nenhuma coleta encontrada.
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

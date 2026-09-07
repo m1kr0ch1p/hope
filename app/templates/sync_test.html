@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Teste SQLite — CNPD-OSINT</title>
+</head>
+<body>
+  <h1>{{ message }}</h1>
+
+  <h2>Banco consultado</h2>
+
+  {% if collections %}
+    <table border="1" cellpadding="8">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Início</th>
+          <th>Fim</th>
+          <th>Status</th>
+          <th>Página inicial</th>
+          <th>Páginas</th>
+          <th>Registros</th>
+          <th>Erro</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for collection in collections %}
+        <tr>
+          <td>{{ collection["id"] }}</td>
+          <td>{{ collection["iniciada_em"] }}</td>
+          <td>{{ collection["finalizada_em"] or "-" }}</td>
+          <td>{{ collection["status"] }}</td>
+          <td>{{ collection["pagina_inicial"] }}</td>
+          <td>{{ collection["paginas_lidas"] }}</td>
+          <td>{{ collection["registros_lidos"] }}</td>
+          <td>{{ collection["erro"] or "-" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>Nenhuma coleta encontrada no banco.</p>
+  {% endif %}
+</body>
+</html>
