@@ -668,3 +668,27 @@ code {
     min-height: 320px;
   }
 }
+
+.case-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+
+.case-actions form {
+  margin: 0;
+}
+
+.draft-text {
+  white-space: pre-wrap;
+  line-height: 1.65;
+}
+
+.draft-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.draft-list li {
+  margin-bottom: .65rem;
+}
