@@ -1,4 +1,4 @@
-# CNPD-OSINT — Núcleo Persistente
+# HOPE
 
 MVP local para sincronizar registros públicos do painel CNPD em SQLite e visualizá-los em um dashboard FastAPI.
 
