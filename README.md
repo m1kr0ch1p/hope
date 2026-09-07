@@ -1,8 +1,8 @@
 # HOPE — CNPD-OSINT
 
-O **HOPE** é uma aplicação local para auxiliar o gerenciamento de investigações OSINT relacionadas a pessoas desaparecidas. A ferramenta funciona como um agregador estruturado de dados: importa registros públicos do Cadastro Nacional de Pessoas Desaparecidas (CNPD), organiza evidências inseridas pelo investigador e oferece recursos para interpretação, análise, georreferenciamento e documentação dos casos.
+O **HOPE** é uma aplicação local para auxiliar o gerenciamento de investigações OSINT relacionadas a pessoas desaparecidas. A ferramenta atua como um agregador estruturado de dados: importa registros públicos do Cadastro Nacional de Pessoas Desaparecidas (CNPD), organiza evidências inseridas pelo investigador e oferece recursos para interpretação, análise, georreferenciamento, enriquecimento assistido por IA local e documentação dos casos.
 
-A aplicação não substitui autoridades competentes, protocolos institucionais ou validação humana. Seu objetivo é apoiar a organização do trabalho investigativo, preservar fontes e evidências, reduzir dispersão de informações e facilitar a produção de relatórios revisáveis.
+O sistema não substitui autoridades competentes, protocolos institucionais ou validação humana. Seu objetivo é apoiar a organização do trabalho investigativo, preservar fontes e evidências, reduzir a dispersão de informações e facilitar a produção de rascunhos e relatórios revisáveis.
 
 > **Uso responsável:** informações sobre pessoas desaparecidas são sensíveis. Utilize o sistema somente em ambiente controlado, com finalidade legítima, observando a legislação aplicável, a privacidade e a segurança dos dados. Uma ausência no painel público não é prova de localização, óbito, encerramento ou resolução de um caso.
 
@@ -10,17 +10,20 @@ A aplicação não substitui autoridades competentes, protocolos institucionais 
 
 ## Finalidade
 
-Investigações de pessoas desaparecidas frequentemente envolvem informações dispersas entre portais públicos, consultas abertas na internet, perfis sociais, fontes jornalísticas, documentos, imagens, contatos, relatos e pontos geográficos. O HOPE centraliza esses elementos por caso, permitindo que o investigador:
+Investigações de pessoas desaparecidas normalmente envolvem informações distribuídas entre portais públicos, pesquisas abertas, consultas com operadores avançados, redes sociais, documentos, imagens, contatos, relatos e referências geográficas.
 
-- mantenha o registro público de origem separado de dados investigativos;
-- registre a origem, o contexto e o grau de confiança de cada achado;
-- diferencie fatos confirmados, dados brutos, hipóteses e pendências;
+O HOPE centraliza esses elementos por caso para permitir que o investigador:
+
+- mantenha os dados públicos de origem separados dos dados investigativos;
+- registre fonte, data, contexto e nível de confiança de cada achado;
+- diferencie dados brutos, fatos confirmados, hipóteses e pendências;
 - relacione pessoas próximas, contas sociais, telefones, e-mails e URLs;
-- represente locais relevantes em mapa;
+- represente locais relevantes em um mapa;
 - preserve mídias e hashes para rastreabilidade básica;
-- gere relatórios operacionais para revisão humana.
+- utilize um modelo de linguagem local para organizar um rascunho analítico;
+- revise o rascunho antes da criação do relatório PDF.
 
-O sistema foi projetado para ser executado localmente, usando SQLite como banco de dados e FastAPI como backend web.
+A aplicação foi projetada para uso local, utilizando FastAPI, SQLite, Leaflet, OpenStreetMap, ReportLab e Ollama.
 
 ---
 
@@ -29,24 +32,23 @@ O sistema foi projetado para ser executado localmente, usando SQLite como banco 
 ### Integração com CNPD
 
 - Consulta ao painel público do Cadastro Nacional de Pessoas Desaparecidas.
-- Coleta paginada de registros por API.
-- Uso do endpoint público observado:
+- Coleta paginada por API.
+- Requisição `POST` para o endpoint de filtro:
 
   ```text
-  POST https://cnpd.mj.gov.br/api/api/painel-publico/desaparecidos/filtrar
+  https://cnpd.mj.gov.br/api/api/painel-publico/desaparecidos/filtrar
   ```
 
-- Paginação por parâmetro `pagina`.
-- Ordenação padrão por registros mais recentes.
-- Preservação do JSON bruto de cada página coletada.
-- Normalização de dados no banco SQLite.
+- Parâmetros de ordenação e página.
+- Preservação do JSON bruto de cada página.
+- Normalização dos registros em SQLite.
 - Identificação estável por `cnpd_id`.
-- Histórico de coletas, páginas processadas, quantidade de registros e erros.
-- Atualização de registros já existentes sem duplicar casos.
+- Histórico de coletas, páginas, registros e erros.
+- Atualização de casos existentes sem duplicação.
 
 ### Dados oficiais armazenados
 
-Quando presentes no retorno do CNPD, são registrados:
+Quando disponíveis no retorno do CNPD:
 
 - ID CNPD;
 - nome;
@@ -54,64 +56,66 @@ Quando presentes no retorno do CNPD, são registrados:
 - idade na data do desaparecimento;
 - sexo;
 - raça/cor;
-- município/local de registro;
-- UF;
+- local e UF de registro;
 - data do desaparecimento;
 - data do registro;
 - indicador de localização confirmada;
-- hash do objeto recebido da fonte;
-- data da primeira e da última coleta;
-- JSON original da fonte;
-- URL de metadados da imagem oficial.
+- hash do objeto original;
+- primeira e última coleta;
+- JSON original retornado pela fonte;
+- URL dos metadados da imagem principal.
 
-### Imagens oficiais do CNPD
+### Imagens oficiais CNPD
 
-- Consulta do endpoint de imagem principal por ID CNPD.
-- Leitura dos metadados JSON retornados pela fonte.
-- Extração da imagem codificada em Base64 no campo:
+O endpoint de imagem principal retorna metadados JSON e o conteúdo da imagem em Base64, no campo:
 
-  ```text
-  arquivoCnpd.arquivoDTO.conteudo
-  ```
+```text
+arquivoCnpd.arquivoDTO.conteudo
+```
 
-- Decodificação da imagem para arquivo local.
-- Validação básica de assinatura de formatos JPEG, PNG, GIF e WEBP.
-- Armazenamento da imagem original no diretório do projeto.
-- Cálculo de hash SHA-256.
-- Registro da mídia no banco de dados.
+A aplicação:
+
+- extrai o Base64;
+- decodifica a imagem;
+- reconhece formatos JPEG, PNG, GIF e WEBP;
+- salva a mídia em diretório local;
+- calcula SHA-256;
+- registra os metadados no banco;
+- apresenta a imagem no dashboard;
+- pode incluir a mídia no PDF.
 
 ### Dashboard de casos
 
-- Listagem de casos armazenados localmente.
+- Listagem dos casos armazenados localmente.
 - Busca por nome, ID CNPD ou localidade.
 - Filtro por UF.
 - Filtro por status da fonte.
-- Página individual para cada caso.
-- Exibição dos dados oficiais do CNPD.
-- Exibição de imagem oficial, quando baixada.
-- Histórico de sincronizações em que o caso foi encontrado.
+- Dashboard individual por caso.
+- Dados oficiais e imagens associadas.
+- Histórico de sincronizações.
+- Evidências, pessoas, redes, localizações, mídias e anotações.
 
-### Pesquisas abertas e evidências
+### Evidências e pesquisas abertas
 
-O dashboard permite registrar dados produzidos ou encontrados pelo investigador, incluindo:
+O investigador pode registrar:
 
-- consultas abertas na internet;
-- Google Dorks e termos de busca;
-- resultados de pesquisa;
+- resultados de pesquisas abertas;
+- consultas e Google Dorks;
 - URLs;
-- notícias;
-- documentos;
 - e-mails;
 - telefones;
 - usernames;
-- IDs de contas;
-- perfis sociais;
-- observações e outros achados.
+- IDs de perfis;
+- redes sociais;
+- notícias;
+- documentos;
+- observações;
+- dados livres.
 
 Cada evidência pode conter:
 
 - tipo;
-- título;
+- título ou consulta;
 - valor principal;
 - descrição/contexto;
 - URL da fonte;
@@ -121,7 +125,7 @@ Cada evidência pode conter:
 - status de verificação;
 - data de criação e atualização.
 
-Classificações previstas:
+Classificações recomendadas:
 
 ```text
 DADO_BRUTO
@@ -132,59 +136,63 @@ PENDENCIA
 
 ### Pessoas relacionadas
 
-Permite cadastrar parentes, amigos, conhecidos ou outros vínculos relevantes ao caso:
+Permite cadastrar parentes, amigos, conhecidos e outros vínculos relevantes:
 
 - nome;
 - tipo de relação;
-- descrição da relação;
+- descrição;
 - e-mail;
 - telefone;
 - localidade;
-- URL/fonte;
+- URL da fonte;
 - nível de confiança;
 - status de verificação.
 
 ### Redes sociais
 
-Permite registrar perfis associados ao desaparecido ou a pessoas relacionadas:
+Permite registrar contas associadas ao desaparecido ou a pessoas relacionadas:
 
 - plataforma;
 - username;
-- ID do perfil;
+- ID da conta;
 - URL do perfil;
 - nome de exibição;
-- observações;
+- observação;
 - fonte;
 - nível de confiança;
 - status de verificação.
 
-### Imagens inseridas pelo investigador
+### Upload de imagens
 
-- Upload de imagens pelo dashboard do caso.
-- Limite inicial de 10 MB por arquivo.
-- Validação de arquivos de imagem.
-- Armazenamento físico em diretório local.
-- Conversão e armazenamento do conteúdo em Base64 na tabela `midias`.
-- Cálculo de SHA-256.
-- Registro de nome, MIME, tamanho, descrição e data.
-- Exibição das imagens cadastradas no dashboard.
+- Upload de imagens pelo dashboard.
+- Limite inicial de 10 MB.
+- Validação de conteúdo de imagem.
+- Salvamento do arquivo no diretório local.
+- Conversão para Base64.
+- Armazenamento do Base64 na tabela `midias`.
+- Hash SHA-256.
+- Nome, MIME, tamanho, descrição e data.
+- Lista/galeria de imagens por caso.
+- Inclusão das imagens no relatório PDF.
 
-> O arquivo é preservado em disco para visualização e backup mais eficientes. O Base64 é mantido no banco para atender ao requisito de vinculação do conteúdo ao caso.
+O arquivo também é preservado em disco para facilitar visualização, backup e exportação.
 
 ### Localizações e mapa
 
-- Cadastro manual de latitude e longitude.
-- Título/flag descritiva do ponto.
+- Cadastro de latitude e longitude.
+- Título/flag do ponto.
 - Tipo de local.
 - Data do evento.
 - URL/fonte.
-- Descrição e nível de confiança.
-- Mapa dinâmico com Leaflet.
-- Camada cartográfica OpenStreetMap.
-- Marcadores para os pontos cadastrados.
-- Zoom automático para um ponto ou conjunto de pontos.
+- Descrição.
+- Nível de confiança.
+- Mapa Leaflet.
+- Camada OpenStreetMap.
+- Marcadores por caso.
+- Zoom automático para pontos únicos ou múltiplos.
+- Inclusão de mapa estático no PDF.
 
-Tipos de local disponíveis:
+Tipos de local:
 
 ```text
 ULTIMO_LOCAL_CONHECIDO
@@ -196,12 +204,12 @@ OUTRO
 
 ### Anotações e análise
 
-- Campo livre para dados adicionais.
-- Registro de anotações analíticas.
+- Campo livre para informações adicionais.
+- Anotações de análise.
 - Categorias para fatos, hipóteses, pendências e próximos passos.
-- Separação conceitual entre informação observada e interpretação investigativa.
+- Separação entre informação observada e interpretação.
 
-Categorias sugeridas:
+Categorias:
 
 ```text
 ANOTACAO
@@ -213,15 +221,258 @@ PROXIMO_PASSO
 
 ### Relatórios PDF
 
-- Botão no dashboard para gerar relatório por caso.
-- Abertura do PDF em nova aba do navegador.
-- Registro do arquivo em `data/reports/`.
+- Geração a partir do dashboard do caso.
+- Abertura em nova aba.
+- Dados oficiais do caso.
+- Evidências e pesquisas abertas.
+- Pessoas relacionadas.
+- Contas sociais.
+- Imagens do CNPD e do investigador.
+- Mapa estático baseado nas coordenadas registradas.
+- Lista textual dos pontos geográficos.
+- Anotações analíticas.
 - Hash SHA-256 do PDF.
-- Registro de metadados na tabela `relatorios`.
-- Inclusão de dados principais do caso, evidências, pessoas relacionadas, redes sociais, pontos geográficos e anotações.
-- Aviso explícito de que o documento é operacional e exige revisão humana.
+- Registro do relatório na tabela `relatorios`.
+- Aviso de revisão humana.
 
-A versão atual gera um relatório estruturado sem inferências automáticas. A integração com Ollama/Qwen pode ser incorporada posteriormente para produzir **rascunhos revisáveis**, nunca conclusões autônomas.
+---
+
+## Integração com Ollama e Qwen
+
+O HOPE utiliza o Ollama local para gerar um **rascunho estruturado de enriquecimento analítico** a partir dos dados já armazenados no caso.
+
+O modelo não realiza buscas externas, não altera automaticamente o banco, não publica conteúdo e não deve produzir conclusões autônomas. A saída precisa ser revisada pelo investigador antes de ser utilizada em um relatório final.
+
+### Modelo configurado
+
+```text
+qwen3.5:latest
+```
+
+### API local
+
+A API padrão do Ollama é:
+
+```text
+http://127.0.0.1:11434
+```
+
+O HOPE utiliza o endpoint:
+
+```text
+POST http://127.0.0.1:11434/api/generate
+```
+
+### Conteúdo enviado ao modelo
+
+O serviço prepara um contexto resumido contendo:
+
+- dados oficiais do CNPD;
+- evidências cadastradas;
+- pessoas relacionadas;
+- contas sociais;
+- pontos geográficos;
+- anotações;
+- resumo das mídias disponíveis.
+
+O conteúdo Base64 das imagens não é enviado ao modelo. Isso reduz o tamanho do prompt e evita expor bytes de arquivos sem necessidade.
+
+### Saída estruturada
+
+A integração utiliza JSON estruturado com campos como:
+
+```json
+{
+  "titulo": "",
+  "resumo_executivo": "",
+  "dados_oficiais": [],
+  "evidencias_relevantes": [],
+  "pessoas_e_vinculos": [],
+  "cronologia": [],
+  "hipoteses": [],
+  "pendencias": [],
+  "proximos_passos": [],
+  "alertas_eticos": []
+}
+```
+
+As hipóteses possuem campos próprios para:
+
+- descrição;
+- base disponível;
+- limitações.
+
+Isso ajuda a evitar que inferências sejam apresentadas como fatos.
+
+### Regras do prompt
+
+O serviço orienta o modelo a:
+
+- usar somente os dados fornecidos;
+- não inventar nomes, datas, locais, vínculos ou eventos;
+- não transformar dado bruto em fato confirmado;
+- indicar lacunas como pendências;
+- manter linguagem neutra e cautelosa;
+- não sugerir assédio, exposição, rastreamento invasivo ou contato indevido;
+- produzir próximos passos legais, proporcionais e verificáveis;
+- retornar somente o JSON solicitado.
+
+### Preparação do Ollama
+
+Verifique a instalação:
+
+```powershell
+ollama --version
+```
+
+Baixe o modelo:
+
+```powershell
+ollama pull qwen3.5:latest
+```
+
+Faça um teste interativo:
+
+```powershell
+ollama run qwen3.5:latest
+```
+
+No prompt do modelo:
+
+```text
+Responda somente: OK
+```
+
+Saia com:
+
+```text
+/bye
+```
+
+Se a API não estiver disponível, inicie o serviço:
+
+```powershell
+ollama serve
+```
+
+Teste via PowerShell:
+
+```powershell
+Invoke-RestMethod `
+  -Uri "http://127.0.0.1:11434/api/generate" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"model":"qwen3.5:latest","prompt":"Responda somente OK.","stream":false}'
+```
+
+A resposta deve conter uma propriedade semelhante a:
+
+```json
+{
+  "response": "OK",
+  "done": true
+}
+```
+
+### Gerar rascunho no dashboard
+
+1. Inicie o HOPE.
+2. Abra um caso.
+3. Cadastre ou revise evidências, pessoas, perfis, pontos e anotações.
+4. Clique em **Gerar rascunho com IA**.
+5. Revise o rascunho em nova aba.
+6. Corrija ou descarte formulações inadequadas.
+7. Gere o PDF somente depois da revisão.
+
+O rascunho é persistido na tabela:
+
+```text
+rascunhos_ia
+```
+
+São registrados:
+
+- ID do caso;
+- modelo utilizado;
+- contexto resumido enviado;
+- resposta JSON;
+- métricas de geração;
+- status;
+- data de criação e atualização.
+
+### Variáveis de configuração
+
+No arquivo `app/config.py`:
+
+```python
+OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+OLLAMA_GENERATE_URL = f"{OLLAMA_BASE_URL}/api/generate"
+OLLAMA_MODEL = "qwen3.5:latest"
+OLLAMA_TIMEOUT_SECONDS = 240
+OLLAMA_TEMPERATURE = 0.2
+OLLAMA_NUM_PREDICT = 2600
+```
+
+Use temperatura baixa para priorizar consistência e fidelidade aos dados armazenados.
+
+### Teste direto do serviço
+
+Crie ou utilize `testar_ollama.py`:
+
+```python
+from app.services.investigation_service import build_case_context
+from app.services.ollama_service import generate_report_draft
+
+CNPD_ID = 215477
+
+context = build_case_context(CNPD_ID)
+result = generate_report_draft(context)
+
+print("Modelo:", result["model"])
+print("Métricas:", result["metrics"])
+print("Rascunho:")
+print(result["draft"])
+```
+
+Execute:
+
+```powershell
+python .\testar_ollama.py
+```
+
+### Falhas comuns
+
+#### Ollama não encontrado
+
+```text
+Connection refused
+```
+
+Solução:
+
+```powershell
+ollama serve
+```
+
+#### Modelo inexistente
+
+```text
+model not found
+```
+
+Solução:
+
+```powershell
+ollama pull qwen3.5:latest
+```
+
+#### Tempo excedido
+
+Modelos locais podem levar tempo para carregar e gerar. Aumente `OLLAMA_TIMEOUT_SECONDS` e verifique memória RAM, VRAM e tamanho do modelo.
+
+#### JSON inválido
+
+O serviço valida a resposta com `json.loads`. Se o modelo retornar texto adicional, verifique se o campo `format` com JSON Schema está sendo enviado ao endpoint.
 
 ---
 
@@ -234,39 +485,37 @@ cnpd-osint/
 ├── run.py
 ├── diagnostico.py
 ├── sincronizar_teste.py
+├── testar_ollama.py
 ├── app/
-│   ├── __init__.py
 │   ├── config.py
 │   ├── database.py
 │   ├── main.py
 │   ├── routers/
-│   │   ├── __init__.py
 │   │   ├── cases.py
 │   │   ├── reports.py
-│   │   └── sync.py
+│   │   ├── sync.py
+│   │   └── ai.py
 │   ├── services/
-│   │   ├── __init__.py
 │   │   ├── cnpd_client.py
 │   │   ├── investigation_service.py
+│   │   ├── ollama_service.py
 │   │   ├── report_service.py
 │   │   └── sync_service.py
 │   ├── templates/
 │   │   ├── base.html
 │   │   ├── index.html
 │   │   ├── sync.html
-│   │   └── case_detail.html
+│   │   ├── case_detail.html
+│   │   └── ai_draft.html
 │   └── static/
 │       └── css/
 │           └── app.css
 ├── data/
 │   ├── cnpd.db
-│   ├── raw/
-│   │   └── cnpd/
-│   ├── images/
-│   │   ├── source/
-│   │   └── uploads/
-│   ├── reports/
-│   └── exports/
+│   ├── raw/cnpd/
+│   ├── images/source/
+│   ├── images/uploads/
+│   └── reports/
 └── logs/
 ```
 
@@ -275,16 +524,20 @@ cnpd-osint/
 ## Requisitos
 
 - Python 3.11 ou superior;
-- conexão de rede com o painel público CNPD;
+- FastAPI e Uvicorn;
+- SQLite, incluído no Python;
+- requests;
+- Jinja2;
+- python-multipart;
+- ReportLab;
+- Ollama instalado localmente para o enriquecimento com IA;
+- modelo `qwen3.5:latest` baixado;
 - navegador moderno;
-- Windows, Linux ou macOS;
-- conexão com a internet para a camada OpenStreetMap e bibliotecas Leaflet carregadas por CDN.
+- internet para o CNPD, Leaflet e tiles OpenStreetMap.
 
 ---
 
-## Instalação
-
-### Windows PowerShell
+## Instalação no Windows
 
 Abra o PowerShell na pasta do projeto:
 
@@ -305,31 +558,38 @@ Instale as dependências:
 pip install -r .\requirements.txt
 ```
 
+Prepare o Ollama:
+
+```powershell
+ollama pull qwen3.5:latest
+```
+
 Inicie a aplicação:
 
 ```powershell
 python .\run.py
 ```
 
-Abra no navegador:
+Acesse:
 
 ```text
 http://127.0.0.1:8000
 ```
 
-### Linux/macOS
+---
+
+## Instalação no Linux/macOS
 
 ```bash
 cd cnpd-osint
-
 python3 -m venv env
 source env/bin/activate
-
 pip install -r requirements.txt
+ollama pull qwen3.5:latest
 python run.py
 ```
 
-Abra no navegador:
+Acesse:
 
 ```text
 http://127.0.0.1:8000
@@ -339,48 +599,22 @@ http://127.0.0.1:8000
 
 ## Primeiro uso
 
-1. Inicie o servidor:
-
-   ```powershell
-   python .\run.py
-   ```
-
-2. Abra a tela de sincronização:
-
-   ```text
-   http://127.0.0.1:8000/sincronizar
-   ```
-
-3. Para o primeiro teste, configure:
-
-   ```text
-   Página inicial: 0
-   Máximo de páginas: 1
-   Ordenação: Mais recente
-   Baixar imagens oficiais: desmarcado
-   ```
-
-4. Clique em **Iniciar sincronização**.
-
-5. Após a conclusão, abra:
-
-   ```text
-   http://127.0.0.1:8000/
-   ```
-
-6. Clique em **Abrir** para acessar o dashboard de um caso.
-
-7. Registre evidências, pessoas relacionadas, redes sociais, localizações, imagens e anotações.
-
-8. Use **Gerar relatório PDF** para produzir um documento por caso.
-
-9. Para baixar imagens oficiais, execute nova sincronização marcando a opção correspondente. Comece com uma página para avaliar volume e desempenho.
+1. Abra `http://127.0.0.1:8000/sincronizar`.
+2. Use página inicial `0` e máximo de páginas `1`.
+3. Faça uma coleta sem imagens para validar a persistência.
+4. Abra a lista de casos.
+5. Escolha um caso.
+6. Cadastre evidências, pessoas, perfis, localizações e anotações.
+7. Faça upload de imagens, se necessário.
+8. Clique em **Gerar rascunho com IA**.
+9. Revise o resultado.
+10. Clique em **Gerar relatório PDF**.
 
 ---
 
 ## Banco de dados
 
-O HOPE utiliza SQLite. O banco é criado em:
+O banco é criado em:
 
 ```text
 data/cnpd.db
@@ -390,16 +624,17 @@ data/cnpd.db
 
 | Tabela | Finalidade |
 |---|---|
-| `casos` | Dados normalizados obtidos do CNPD |
+| `casos` | Dados normalizados do CNPD |
 | `coletas` | Histórico de sincronizações |
-| `casos_coleta` | Relação entre um caso e uma coleta |
-| `midias` | Imagens oficiais e uploads do investigador |
-| `evidencias` | Pesquisas, URLs, e-mails, telefones e outros achados |
-| `pessoas_relacionadas` | Parentes, conhecidos e vínculos registrados |
-| `contas_sociais` | Perfis, usernames e IDs sociais |
-| `pontos_geograficos` | Coordenadas e contexto geográfico |
+| `casos_coleta` | Presença do caso em cada coleta |
+| `midias` | Imagens oficiais e uploads |
+| `evidencias` | Pesquisas, URLs, e-mails, telefones e achados |
+| `pessoas_relacionadas` | Pessoas próximas e vínculos |
+| `contas_sociais` | Perfis, usernames e IDs |
+| `pontos_geograficos` | Coordenadas e contexto espacial |
 | `anotacoes` | Análises, fatos, hipóteses e pendências |
-| `relatorios` | Metadados, hash e referência a relatórios PDF |
+| `rascunhos_ia` | Contextos e respostas geradas pelo Ollama |
+| `relatorios` | PDFs e seus hashes |
 
 ### Status de fonte
 
@@ -411,131 +646,95 @@ PENDENTE_DE_REVISAO
 ARQUIVADO_POR_CONFIRMACAO
 ```
 
-> Uma ausência na fonte é apenas um evento operacional que deve ser revisado por uma pessoa autorizada. Não é uma conclusão sobre o caso.
+Uma ausência em uma coleta não é uma conclusão sobre o destino da pessoa.
 
 ---
 
 ## Armazenamento local
 
-### Banco SQLite
-
 ```text
 data/cnpd.db
-```
-
-### Respostas brutas da fonte
-
-```text
-data/raw/cnpd/coleta_{id}/pagina_00000.json
-```
-
-### Imagens oficiais CNPD
-
-```text
-data/images/source/{cnpd_id}/
-```
-
-### Uploads de investigador
-
-```text
-data/images/uploads/{cnpd_id}/
-```
-
-### Relatórios
-
-```text
-data/reports/
+ data/raw/cnpd/coleta_{id}/pagina_00000.json
+ data/images/source/{cnpd_id}/
+ data/images/uploads/{cnpd_id}/
+ data/reports/
 ```
 
 ---
 
-## Diagnóstico e testes
+## Diagnóstico
 
-### Testar sincronização sem interface web
+Testar sincronização sem interface:
 
 ```powershell
 python .\sincronizar_teste.py
 ```
 
-O resultado esperado em uma página é aproximadamente:
-
-```text
-status: COMPLETA
-pages_read: 1
-records_read: 30
-```
-
-### Diagnosticar banco SQLite
+Diagnosticar SQLite:
 
 ```powershell
 python .\diagnostico.py
 ```
 
-O script informa:
+Testar Ollama diretamente:
 
-- caminho absoluto do banco utilizado;
-- existência e tamanho do arquivo SQLite;
-- tabelas criadas;
-- histórico de coletas;
-- total de casos;
-- primeiros casos persistidos.
+```powershell
+python .\testar_ollama.py
+```
 
-### Verificar CSS
-
-Abra diretamente no navegador:
+Verificar CSS:
 
 ```text
 http://127.0.0.1:8000/static/css/app.css
 ```
 
-Se fizer alterações visuais, use `Ctrl+F5` no navegador para ignorar o cache.
-
 ---
 
-## Segurança, privacidade e ética
+## Segurança e ética
 
-- Mantenha a aplicação em computador ou rede controlada.
-- Não publique o servidor FastAPI diretamente na internet.
-- Proteja o banco, os diretórios de mídia e os backups.
-- Registre fonte, data, contexto e confiança para cada evidência.
+- Mantenha a aplicação local ou em rede controlada.
+- Não exponha as portas `8000` ou `11434` diretamente na internet.
+- Proteja o banco, mídias, prompts, respostas do modelo e backups.
+- Não envie Base64 de imagens ao modelo sem necessidade.
+- Não registre no prompt informações que não sejam necessárias para o rascunho.
 - Diferencie dados brutos, fatos confirmados, hipóteses e pendências.
-- Não automatize contato com familiares, terceiros, contas sociais ou possíveis envolvidos.
-- Não use reconhecimento facial, associação automática de identidade ou tomada automatizada de decisão sem base legal, governança, autorização e revisão humana apropriadas.
-- Revise o conteúdo antes de gerar, compartilhar ou encaminhar um relatório.
-- Faça backups regulares do banco SQLite e dos diretórios `data/images/` e `data/reports/`.
+- Não automatize contato com familiares, terceiros ou contas sociais.
+- Não use reconhecimento facial ou associação automática de identidade sem base legal, governança e revisão especializada.
+- Revise todo conteúdo produzido pelo Ollama antes de gerar ou compartilhar um relatório.
+- Preserve o contexto de entrada e a resposta do modelo para auditoria.
+- Faça backups regulares e considere criptografia para dados sensíveis.
 
 ---
 
 ## Limitações atuais
 
 - Não há autenticação ou controle de permissões por usuário;
-- não há trilha de auditoria por investigador;
-- edição e exclusão completas ainda não foram implementadas para todos os registros;
-- o mapa depende de CDN Leaflet e dos tiles do OpenStreetMap;
-- não há fila de processamento para coletas extensas;
-- a automação OSINT não está implementada;
-- a integração Ollama/Qwen ainda não está ativa;
-- o mecanismo definitivo para validar varredura integral antes de sinalizar ausências da fonte deve ser tratado com cautela.
+- não há trilha completa de auditoria;
+- edição e exclusão ainda podem ser limitadas em alguns recursos;
+- o mapa depende de CDN Leaflet e tiles OpenStreetMap;
+- a geração do mapa estático depende da disponibilidade dos tiles;
+- o Ollama pode produzir omissões ou interpretações inadequadas;
+- o rascunho IA não é uma conclusão investigativa;
+- não há automação OSINT autônoma;
+- não há garantia de que a ausência de um caso na fonte represente resolução.
 
 ---
 
-## Próximas evoluções sugeridas
+## Próximas evoluções
 
-1. Adicionar CRUD completo para editar e excluir evidências, pessoas, perfis, pontos, mídias e anotações.
-2. Adicionar autenticação local, usuários e permissões.
-3. Criar trilha de auditoria com autor, data, alteração anterior e alteração posterior.
-4. Implementar filtros avançados por tipo de evidência, confiança, verificação e período.
-5. Vincular contas sociais diretamente a pessoas relacionadas pelo dashboard.
-6. Melhorar a visualização geográfica com ícones e cores por categoria de localização.
-7. Importar e exportar GeoJSON, CSV e JSON estruturado por caso.
-8. Integrar Ollama com modelo local para gerar rascunhos de relatório revisáveis.
-9. Criar tela de revisão/edição do rascunho antes de gerar PDF definitivo.
-10. Inserir imagens, tabela de evidências e mapa estático no PDF.
-11. Implementar backups criptografados.
-12. Migrar para PostgreSQL se houver uso simultâneo por múltiplos investigadores ou maior volume de dados.
+1. Adicionar autenticação local e perfis de investigador.
+2. Implementar trilha de auditoria de alterações.
+3. Adicionar edição e exclusão completas com confirmação.
+4. Incorporar revisão/aprovação do rascunho IA no dashboard.
+5. Permitir converter itens do rascunho em anotações ou evidências após revisão.
+6. Inserir imagens e mapa estático no PDF com layout configurável.
+7. Implementar backups criptografados.
+8. Adicionar fila para sincronização e geração de relatórios.
+9. Migrar para PostgreSQL em ambiente multiusuário.
+10. Criar testes automatizados para banco, coleta, prompts, JSON Schema e PDF.
 
 ---
 
 ## Licença e responsabilidade
 
-Antes de distribuir ou utilizar a aplicação em contexto institucional, defina uma licença, política de uso, controles de acesso, procedimento de retenção de dados, rotina de backups e política de resposta a incidentes. O operador é responsável pelo uso legítimo, seguro e ético das informações processadas.
+Antes de distribuir ou utilizar a aplicação em contexto institucional, defina uma licença, política de uso, controles de acesso, procedimento de retenção, rotina de backups e plano de resposta a incidentes. O operador é responsável pelo uso legítimo, seguro e ético das informações processadas.
