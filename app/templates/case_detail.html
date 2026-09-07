@@ -1,8 +1,16 @@
 {% extends "base.html" %}
-{% block title %}{{ case['nome'] }} | CNPD-OSINT{% endblock %}
-{% block head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+{% block title %}
+{{ case['nome'] }} | CNPD-OSINT
 {% endblock %}
+
+{% block head %}
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+>
+{% endblock %}
+
 {% block content %}
 <a class="back-link" href="/">← Voltar aos casos</a>
 
@@ -10,88 +18,383 @@
   <div>
     <p class="eyebrow">CNPD #{{ case['cnpd_id'] }}</p>
     <h1>{{ case['nome'] }}</h1>
-    <p class="muted">Status: <span class="badge {{ case['status_fonte'].lower() }}">{{ case['status_fonte'] }}</span></p>
+    <p class="muted">
+      Status:
+      <span class="badge {{ case['status_fonte'].lower() }}">
+        {{ case['status_fonte'] }}
+      </span>
+    </p>
   </div>
-  <form method="post" action="/relatorios/casos/{{ case['cnpd_id'] }}" target="_blank">
-    <button class="button primary" type="submit">Gerar relatório PDF</button>
+
+  <form
+    method="post"
+    action="/relatorios/casos/{{ case['cnpd_id'] }}"
+    target="_blank"
+  >
+    <button class="button primary" type="submit">
+      Gerar relatório PDF
+    </button>
   </form>
 </section>
 
-<section class="grid two-columns">
+<section class="grid two-columns case-summary-grid">
   <article class="card">
     <h2>Dados da fonte</h2>
+
     <dl class="details">
-      <dt>Desaparecimento</dt><dd>{{ case['data_desaparecimento'] or '-' }}</dd>
-      <dt>Local</dt><dd>{{ case['local_registro'] or '-' }}</dd>
-      <dt>UF</dt><dd>{{ case['uf_registro'] or '-' }}</dd>
-      <dt>Sexo</dt><dd>{{ case['sexo'] or '-' }}</dd>
-      <dt>Idade</dt><dd>{{ case['idade_desaparecimento'] or '-' }}</dd>
+      <dt>Desaparecimento</dt>
+      <dd>{{ case['data_desaparecimento'] or '-' }}</dd>
+
+      <dt>Local</dt>
+      <dd>{{ case['local_registro'] or '-' }}</dd>
+
+      <dt>UF</dt>
+      <dd>{{ case['uf_registro'] or '-' }}</dd>
+
+      <dt>Sexo</dt>
+      <dd>{{ case['sexo'] or '-' }}</dd>
+
+      <dt>Idade</dt>
+      <dd>{{ case['idade_desaparecimento'] or '-' }}</dd>
+
+      <dt>Localização confirmada</dt>
+      <dd>{{ case['localizacao_confirmada'] or '-' }}</dd>
     </dl>
   </article>
-  <article class="card">
+
+  <article class="card media-card" id="midias">
     <h2>Imagens</h2>
-    {% for item in media %}
-      {% if item['mime_type'] and item['mime_type'].startswith('image/') %}
-      <figure>
-        <img class="case-photo" src="/midias/{{ item['id'] }}" alt="{{ item['nome_original'] or 'Imagem do caso' }}">
-        <figcaption>{{ item['nome_original'] or '-' }} · {{ item['origem'] }}</figcaption>
-      </figure>
-      {% endif %}
-    {% else %}
+
+    <div class="media-gallery" aria-label="Galeria de imagens do caso">
+      {% for item in media %}
+        {% if item['mime_type'] and item['mime_type'].startswith('image/') %}
+        <figure class="media-item">
+          <a
+            href="/midias/{{ item['id'] }}"
+            target="_blank"
+            rel="noreferrer"
+            title="Abrir imagem em nova aba"
+          >
+            <img
+              class="case-photo"
+              src="/midias/{{ item['id'] }}"
+              alt="{{ item['nome_original'] or 'Imagem do caso' }}"
+              loading="lazy"
+            >
+          </a>
+
+          <figcaption>
+            <span class="media-name">
+              {{ item['nome_original'] or '-' }}
+            </span>
+            <span class="media-origin">
+              {{ item['origem'] }}
+            </span>
+          </figcaption>
+        </figure>
+        {% endif %}
+      {% else %}
       <p class="empty">Nenhuma imagem cadastrada.</p>
-    {% endfor %}
-    <form class="upload-form" method="post" action="/casos/{{ case['cnpd_id'] }}/upload" enctype="multipart/form-data">
-      <input type="file" name="file" accept="image/*" required>
-      <input name="descricao" placeholder="Descrição da imagem">
-      <button class="button" type="submit">Enviar imagem</button>
+      {% endfor %}
+    </div>
+
+    <form
+      class="upload-form media-upload"
+      method="post"
+      action="/casos/{{ case['cnpd_id'] }}/upload"
+      enctype="multipart/form-data"
+    >
+      <label class="file-label">
+        <span>Selecionar imagem</span>
+        <input type="file" name="file" accept="image/*" required>
+      </label>
+
+      <input
+        name="descricao"
+        placeholder="Descrição da imagem"
+      >
+
+      <button class="button" type="submit">
+        Enviar imagem
+      </button>
     </form>
   </article>
 </section>
 
 <section class="card" id="evidencias">
-  <h2>Pesquisas abertas e evidências</h2>
-  <form class="investigation-form" method="post" action="/casos/{{ case['cnpd_id'] }}/evidencias">
-    <select name="tipo"><option>CONSULTA_BUSCA</option><option>URL</option><option>EMAIL</option><option>TELEFONE</option><option>PERFIL_SOCIAL</option><option>OUTRO</option></select>
-    <input name="titulo" placeholder="Título / consulta / Google Dork" required>
-    <input name="valor" placeholder="Resultado, URL, e-mail ou telefone" required>
-    <input name="url_fonte" placeholder="URL da fonte">
-    <textarea name="descricao" placeholder="Descrição e contexto"></textarea>
-    <select name="classificacao"><option>DADO_BRUTO</option><option>FATO_CONFIRMADO</option><option>HIPOTESE</option><option>PENDENCIA</option></select>
-    <select name="nivel_confianca"><option>NAO_AVALIADO</option><option>BAIXO</option><option>MEDIO</option><option>ALTO</option></select>
-    <button class="button primary" type="submit">Adicionar evidência</button>
+  <div class="section-heading">
+    <div>
+      <h2>Pesquisas abertas e evidências</h2>
+      <p class="small muted">
+        Registre consultas abertas, Google Dorks, URLs, e-mails, telefones,
+        perfis sociais e outros achados.
+      </p>
+    </div>
+  </div>
+
+  <form
+    class="investigation-form"
+    method="post"
+    action="/casos/{{ case['cnpd_id'] }}/evidencias"
+  >
+    <label>
+      Tipo
+      <select name="tipo">
+        <option>CONSULTA_BUSCA</option>
+        <option>URL</option>
+        <option>EMAIL</option>
+        <option>TELEFONE</option>
+        <option>PERFIL_SOCIAL</option>
+        <option>DOCUMENTO</option>
+        <option>NOTICIA</option>
+        <option>OUTRO</option>
+      </select>
+    </label>
+
+    <label>
+      Título / consulta / Google Dork
+      <input
+        name="titulo"
+        placeholder='Ex.: site:instagram.com "Nome da pessoa"'
+      >
+    </label>
+
+    <label>
+      Resultado ou valor principal
+      <input
+        name="valor"
+        placeholder="Resultado, URL, e-mail, telefone ou identificador"
+        required
+      >
+    </label>
+
+    <label>
+      URL da fonte
+      <input
+        name="url_fonte"
+        type="url"
+        placeholder="https://..."
+      >
+    </label>
+
+    <label>
+      Classificação
+      <select name="classificacao">
+        <option>DADO_BRUTO</option>
+        <option>FATO_CONFIRMADO</option>
+        <option>HIPOTESE</option>
+        <option>PENDENCIA</option>
+      </select>
+    </label>
+
+    <label>
+      Nível de confiança
+      <select name="nivel_confianca">
+        <option>NAO_AVALIADO</option>
+        <option>BAIXO</option>
+        <option>MEDIO</option>
+        <option>ALTO</option>
+      </select>
+    </label>
+
+    <label class="full-width">
+      Descrição e contexto
+      <textarea
+        name="descricao"
+        placeholder="Descreva o contexto, a fonte, o método de coleta e o motivo de relevância."
+      ></textarea>
+    </label>
+
+    <button class="button primary" type="submit">
+      Adicionar evidência
+    </button>
   </form>
-  {% for item in evidences %}
-  <article class="record"><span class="badge">{{ item['classificacao'] }}</span> <strong>{{ item['titulo'] or item['tipo'] }}</strong><p>{{ item['valor'] }}</p><small>{{ item['descricao'] or '' }}</small></article>
-  {% else %}<p class="empty">Nenhuma evidência cadastrada.</p>{% endfor %}
+
+  <div class="records">
+    {% for item in evidences %}
+    <article class="record">
+      <div class="record-title-row">
+        <span class="badge">{{ item['classificacao'] }}</span>
+        <strong>{{ item['titulo'] or item['tipo'] }}</strong>
+      </div>
+
+      <p class="record-value">{{ item['valor'] }}</p>
+
+      {% if item['url_fonte'] %}
+      <a
+        class="record-link"
+        href="{{ item['url_fonte'] }}"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Abrir fonte
+      </a>
+      {% endif %}
+
+      {% if item['descricao'] %}
+      <p class="record-description">{{ item['descricao'] }}</p>
+      {% endif %}
+    </article>
+    {% else %}
+    <p class="empty">Nenhuma evidência cadastrada.</p>
+    {% endfor %}
+  </div>
 </section>
 
 <section class="grid two-columns">
   <article class="card" id="pessoas">
-    <h2>Parentes e pessoas próximas</h2>
-    <form class="investigation-form" method="post" action="/casos/{{ case['cnpd_id'] }}/pessoas">
-      <input name="nome" placeholder="Nome" required>
-      <input name="tipo_relacao" placeholder="Relação">
-      <input name="email" placeholder="E-mail">
-      <input name="telefone" placeholder="Telefone">
-      <input name="localidade" placeholder="Localidade">
-      <input name="fonte_url" placeholder="Fonte URL">
-      <textarea name="descricao_relacao" placeholder="Descrição da relação"></textarea>
-      <button class="button primary" type="submit">Adicionar pessoa</button>
+    <div class="section-heading">
+      <div>
+        <h2>Parentes e pessoas próximas</h2>
+        <p class="small muted">
+          Registre vínculos declarados ou encontrados, mantendo fonte e contexto.
+        </p>
+      </div>
+    </div>
+
+    <form
+      class="investigation-form"
+      method="post"
+      action="/casos/{{ case['cnpd_id'] }}/pessoas"
+    >
+      <label>
+        Nome
+        <input name="nome" placeholder="Nome completo" required>
+      </label>
+
+      <label>
+        Relação
+        <input name="tipo_relacao" placeholder="Ex.: mãe, amigo, colega">
+      </label>
+
+      <label>
+        E-mail
+        <input name="email" type="email" placeholder="email@exemplo.com">
+      </label>
+
+      <label>
+        Telefone
+        <input name="telefone" placeholder="+55 ...">
+      </label>
+
+      <label>
+        Localidade
+        <input name="localidade" placeholder="Cidade/UF">
+      </label>
+
+      <label>
+        Fonte URL
+        <input name="fonte_url" type="url" placeholder="https://...">
+      </label>
+
+      <label class="full-width">
+        Descrição da relação
+        <textarea
+          name="descricao_relacao"
+          placeholder="Como o vínculo foi identificado e qual a relevância?"
+        ></textarea>
+      </label>
+
+      <button class="button primary" type="submit">
+        Adicionar pessoa
+      </button>
     </form>
-    {% for item in people %}<article class="record"><strong>{{ item['nome'] }}</strong><p>{{ item['tipo_relacao'] or '-' }} · {{ item['telefone'] or '' }} · {{ item['email'] or '' }}</p></article>{% else %}<p class="empty">Nenhuma pessoa relacionada.</p>{% endfor %}
+
+    <div class="records">
+      {% for item in people %}
+      <article class="record">
+        <strong>{{ item['nome'] }}</strong>
+        <p>
+          {{ item['tipo_relacao'] or 'Relação não informada' }}
+        </p>
+        <small>
+          {{ item['telefone'] or '' }}
+          {% if item['telefone'] and item['email'] %} · {% endif %}
+          {{ item['email'] or '' }}
+        </small>
+      </article>
+      {% else %}
+      <p class="empty">Nenhuma pessoa relacionada.</p>
+      {% endfor %}
+    </div>
   </article>
+
   <article class="card" id="sociais">
-    <h2>Redes sociais</h2>
-    <form class="investigation-form" method="post" action="/casos/{{ case['cnpd_id'] }}/sociais">
-      <input name="plataforma" placeholder="Plataforma" required>
-      <input name="username" placeholder="Username">
-      <input name="perfil_id" placeholder="ID do perfil">
-      <input name="perfil_url" placeholder="URL do perfil">
-      <input name="nome_exibicao" placeholder="Nome de exibição">
-      <textarea name="observacao" placeholder="Observação"></textarea>
-      <button class="button primary" type="submit">Adicionar conta</button>
+    <div class="section-heading">
+      <div>
+        <h2>Redes sociais</h2>
+        <p class="small muted">
+          Cadastre contas do desaparecido ou de pessoas relacionadas.
+        </p>
+      </div>
+    </div>
+
+    <form
+      class="investigation-form"
+      method="post"
+      action="/casos/{{ case['cnpd_id'] }}/sociais"
+    >
+      <label>
+        Plataforma
+        <input name="plataforma" placeholder="Instagram, Facebook, X..." required>
+      </label>
+
+      <label>
+        Username
+        <input name="username" placeholder="@usuario">
+      </label>
+
+      <label>
+        ID do perfil
+        <input name="perfil_id" placeholder="ID numérico ou alfanumérico">
+      </label>
+
+      <label>
+        URL do perfil
+        <input name="perfil_url" type="url" placeholder="https://...">
+      </label>
+
+      <label>
+        Nome de exibição
+        <input name="nome_exibicao" placeholder="Nome visível na conta">
+      </label>
+
+      <label class="full-width">
+        Observação
+        <textarea
+          name="observacao"
+          placeholder="Contexto da associação, elementos observados e fonte."
+        ></textarea>
+      </label>
+
+      <button class="button primary" type="submit">
+        Adicionar conta
+      </button>
     </form>
-    {% for item in socials %}<article class="record"><strong>{{ item['plataforma'] }}</strong><p>{{ item['username'] or '-' }} · {{ item['perfil_url'] or '-' }}</p></article>{% else %}<p class="empty">Nenhuma conta cadastrada.</p>{% endfor %}
+
+    <div class="records">
+      {% for item in socials %}
+      <article class="record">
+        <strong>{{ item['plataforma'] }}</strong>
+        <p>
+          {{ item['username'] or '-' }}
+          {% if item['perfil_id'] %} · ID: {{ item['perfil_id'] }}{% endif %}
+        </p>
+        {% if item['perfil_url'] %}
+        <a
+          class="record-link"
+          href="{{ item['perfil_url'] }}"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Abrir perfil
+        </a>
+        {% endif %}
+      </article>
+      {% else %}
+      <p class="empty">Nenhuma conta cadastrada.</p>
+      {% endfor %}
+    </div>
   </article>
 </section>
 
@@ -99,38 +402,103 @@
   <div class="section-heading">
     <div>
       <h2>Localizações geográficas</h2>
-      <p class="small muted">Adicione latitude, longitude e a flag que descreve o significado do ponto.</p>
+      <p class="small muted">
+        Adicione latitude, longitude e uma flag para descrever o significado do ponto.
+      </p>
     </div>
   </div>
 
-  <form class="investigation-form location-form" method="post" action="/casos/{{ case['cnpd_id'] }}/localizacoes">
-    <input name="titulo" placeholder="Flag / título: último lugar visto" required>
-    <input name="latitude" type="number" step="any" placeholder="Latitude" required>
-    <input name="longitude" type="number" step="any" placeholder="Longitude" required>
-    <select name="tipo_local">
-      <option>ULTIMO_LOCAL_CONHECIDO</option>
-      <option>LOCAL_DESAPARECIMENTO</option>
-      <option>AVISTAMENTO</option>
-      <option>RESIDENCIA</option>
-      <option>OUTRO</option>
-    </select>
-    <input name="data_evento" placeholder="Data do evento">
-    <input name="fonte_url" placeholder="Fonte URL">
-    <textarea name="descricao" placeholder="Descrição do ponto"></textarea>
-    <button class="button primary" type="submit">Adicionar ponto</button>
+  <form
+    class="investigation-form location-form"
+    method="post"
+    action="/casos/{{ case['cnpd_id'] }}/localizacoes"
+  >
+    <label>
+      Flag / título
+      <input
+        name="titulo"
+        placeholder="Ex.: último lugar visto"
+        required
+      >
+    </label>
+
+    <label>
+      Latitude
+      <input
+        name="latitude"
+        type="number"
+        step="any"
+        placeholder="-27.5954"
+        required
+      >
+    </label>
+
+    <label>
+      Longitude
+      <input
+        name="longitude"
+        type="number"
+        step="any"
+        placeholder="-48.5480"
+        required
+      >
+    </label>
+
+    <label>
+      Tipo de local
+      <select name="tipo_local">
+        <option>ULTIMO_LOCAL_CONHECIDO</option>
+        <option>LOCAL_DESAPARECIMENTO</option>
+        <option>AVISTAMENTO</option>
+        <option>RESIDENCIA</option>
+        <option>OUTRO</option>
+      </select>
+    </label>
+
+    <label>
+      Data do evento
+      <input name="data_evento" placeholder="AAAA-MM-DD ou descrição">
+    </label>
+
+    <label>
+      Fonte URL
+      <input name="fonte_url" type="url" placeholder="https://...">
+    </label>
+
+    <label class="full-width">
+      Descrição
+      <textarea
+        name="descricao"
+        placeholder="Contexto, precisão estimada e origem da coordenada."
+      ></textarea>
+    </label>
+
+    <button class="button primary" type="submit">
+      Adicionar ponto
+    </button>
   </form>
 
   <div class="map-frame">
-    <div id="case-map" class="case-map"></div>
+    <div
+      id="case-map"
+      class="case-map"
+      aria-label="Mapa de localizações cadastradas"
+    ></div>
   </div>
 
   <div class="records location-records">
     {% for item in locations %}
     <article class="record">
-      <span class="badge">{{ item['tipo_local'] }}</span>
-      <strong>{{ item['titulo'] }}</strong>
+      <div class="record-title-row">
+        <span class="badge">{{ item['tipo_local'] }}</span>
+        <strong>{{ item['titulo'] }}</strong>
+      </div>
+
       <p>{{ item['latitude'] }}, {{ item['longitude'] }}</p>
-      {% if item['descricao'] %}<small>{{ item['descricao'] }}</small>{% endif %}
+
+      {% if item['descricao'] %}
+      <small>{{ item['descricao'] }}</small>
+      {% endif %}
     </article>
     {% else %}
     <p class="empty">Nenhum ponto geográfico cadastrado.</p>
@@ -139,17 +507,72 @@
 </section>
 
 <section class="card" id="anotacoes">
-  <h2>Anotações de análise e dados livres</h2>
-  <form class="investigation-form" method="post" action="/casos/{{ case['cnpd_id'] }}/anotacoes">
-    <select name="categoria"><option>ANOTACAO</option><option>FATO_CONFIRMADO</option><option>HIPOTESE</option><option>PENDENCIA</option><option>PROXIMO_PASSO</option></select>
-    <select name="classificacao"><option>HIPOTESE</option><option>FATO</option><option>DADO_LIVRE</option></select>
-    <textarea name="conteudo" placeholder="Anotação, análise ou dado livre" required></textarea>
-    <button class="button primary" type="submit">Salvar anotação</button>
+  <div class="section-heading">
+    <div>
+      <h2>Anotações de análise e dados livres</h2>
+      <p class="small muted">
+        Mantenha fatos, hipóteses, pendências e próximos passos claramente separados.
+      </p>
+    </div>
+  </div>
+
+  <form
+    class="investigation-form"
+    method="post"
+    action="/casos/{{ case['cnpd_id'] }}/anotacoes"
+  >
+    <label>
+      Categoria
+      <select name="categoria">
+        <option>ANOTACAO</option>
+        <option>FATO_CONFIRMADO</option>
+        <option>HIPOTESE</option>
+        <option>PENDENCIA</option>
+        <option>PROXIMO_PASSO</option>
+      </select>
+    </label>
+
+    <label>
+      Classificação
+      <select name="classificacao">
+        <option>HIPOTESE</option>
+        <option>FATO</option>
+        <option>DADO_LIVRE</option>
+      </select>
+    </label>
+
+    <label class="full-width">
+      Conteúdo
+      <textarea
+        name="conteudo"
+        placeholder="Anotação, análise ou dado livre"
+        required
+      ></textarea>
+    </label>
+
+    <button class="button primary" type="submit">
+      Salvar anotação
+    </button>
   </form>
-  {% for item in notes %}<article class="record"><span class="badge">{{ item['categoria'] }}</span><p>{{ item['conteudo'] }}</p></article>{% else %}<p class="empty">Nenhuma anotação cadastrada.</p>{% endfor %}
+
+  <div class="records">
+    {% for item in notes %}
+    <article class="record">
+      <div class="record-title-row">
+        <span class="badge">{{ item['categoria'] }}</span>
+        <span class="badge">{{ item['classificacao'] }}</span>
+      </div>
+
+      <p>{{ item['conteudo'] }}</p>
+    </article>
+    {% else %}
+    <p class="empty">Nenhuma anotação cadastrada.</p>
+    {% endfor %}
+  </div>
 </section>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
 (function () {
   const points = [
@@ -164,52 +587,75 @@
     {% endfor %}
   ];
 
-  const map = L.map('case-map', {
+  const mapElement = document.getElementById("case-map");
+
+  if (!mapElement || typeof L === "undefined") {
+    return;
+  }
+
+  const map = L.map(mapElement, {
     center: [-14.2350, -51.9253],
     zoom: 4,
     zoomControl: true
   });
 
   L.tileLayer(
-    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     {
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
+      attribution: "&copy; OpenStreetMap contributors"
     }
   ).addTo(map);
 
   const bounds = [];
 
   points.forEach(function (point) {
-    const latLng = [point.latitude, point.longitude];
-    const popup = '<strong>' + escapeHtml(point.titulo) + '</strong>' +
-      '<br>' + escapeHtml(point.tipo) +
-      (point.descricao ? '<br>' + escapeHtml(point.descricao) : '');
+    const latLng = [
+      point.latitude,
+      point.longitude
+    ];
 
-    L.marker(latLng).addTo(map).bindPopup(popup);
+    const popup =
+      "<strong>" + escapeHtml(point.titulo) + "</strong>" +
+      "<br>" + escapeHtml(point.tipo) +
+      (
+        point.descricao
+          ? "<br>" + escapeHtml(point.descricao)
+          : ""
+      );
+
+    L.marker(latLng)
+      .addTo(map)
+      .bindPopup(popup);
+
     bounds.push(latLng);
   });
 
   if (bounds.length === 1) {
     map.setView(bounds[0], 13);
   } else if (bounds.length > 1) {
-    map.fitBounds(bounds, {padding: [30, 30]});
+    map.fitBounds(bounds, {
+      padding: [30, 30]
+    });
   }
 
   setTimeout(function () {
     map.invalidateSize();
-  }, 150);
+  }, 180);
 
   function escapeHtml(value) {
-    return String(value).replace(/[&<>"']/g, function (character) {
-      return {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-      }[character];
-    });
+    return String(value).replace(
+      /[&<>"']/g,
+      function (character) {
+        return {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "\"": "&quot;",
+          "'": "&#039;"
+        }[character];
+      }
+    );
   }
 }());
 </script>
