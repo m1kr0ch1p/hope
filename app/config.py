@@ -17,6 +17,15 @@ DB_PATH = DATA_DIR / "cnpd.db"
 CNPD_BASE_URL = "https://cnpd.mj.gov.br"
 CNPD_PAINEL_URL = f"{CNPD_BASE_URL}/painel-publico"
 
+OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+OLLAMA_GENERATE_URL = f"{OLLAMA_BASE_URL}/api/generate"
+
+OLLAMA_MODEL = "qwen3.5:latest"
+OLLAMA_TIMEOUT_SECONDS = 360
+
+OLLAMA_TEMPERATURE = 0.1
+OLLAMA_NUM_PREDICT = 7000
+
 CNPD_FILTER_URL = (
     f"{CNPD_BASE_URL}/api/api/painel-publico/"
     "desaparecidos/filtrar"

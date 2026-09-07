@@ -169,6 +169,25 @@ CREATE TABLE IF NOT EXISTS relatorios (
     FOREIGN KEY (cnpd_id) REFERENCES casos(cnpd_id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS rascunhos_ia (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cnpd_id INTEGER NOT NULL,
+
+    modelo TEXT NOT NULL,
+    prompt_contexto_json TEXT NOT NULL,
+    resposta_json TEXT NOT NULL,
+    metricas_json TEXT,
+
+    status TEXT NOT NULL DEFAULT 'RASCUNHO',
+    criado_em TEXT NOT NULL,
+    atualizado_em TEXT NOT NULL,
+
+    FOREIGN KEY (cnpd_id)
+        REFERENCES casos(cnpd_id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_rascunhos_ia_caso ON rascunhos_ia(cnpd_id);
 CREATE INDEX IF NOT EXISTS idx_evidencias_caso ON evidencias(cnpd_id);
 CREATE INDEX IF NOT EXISTS idx_pessoas_caso ON pessoas_relacionadas(cnpd_id);
 CREATE INDEX IF NOT EXISTS idx_sociais_caso ON contas_sociais(cnpd_id);
