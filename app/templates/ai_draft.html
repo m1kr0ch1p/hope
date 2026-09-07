@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}
+Rascunho IA | Caso #{{ cnpd_id }}
+{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/casos/{{ cnpd_id }}">
+  ← Voltar ao caso
+</a>
+
+<section class="page-head">
+  <div>
+    <p class="eyebrow">
+      Caso CNPD #{{ cnpd_id }} · Rascunho #{{ draft_id }}
+    </p>
+
+    <h1>Rascunho de relatório com IA local</h1>
+
+    <p class="muted">
+      Modelo: {{ model }}. Este conteúdo exige revisão humana antes
+      de ser incluído em relatório final.
+    </p>
+  </div>
+</section>
+
+<section class="notice error">
+  <strong>Atenção:</strong>
+  O conteúdo abaixo é gerado a partir dos registros disponíveis no
+  banco local. Ele pode conter omissões, interpretações inadequadas
+  ou formulações imprecisas. Não trate hipóteses como fatos.
+</section>
+
+<section class="card">
+  <h2>{{ draft.get("titulo", "Rascunho operacional") }}</h2>
+
+  <p class="draft-text">
+    {{ draft.get("resumo_executivo", "-") }}
+  </p>
+</section>
+
+<section class="card">
+  <h2>Dados oficiais</h2>
+
+  <ul class="draft-list">
+    {% for item in draft.get("dados_oficiais", []) %}
+    <li>{{ item }}</li>
+    {% else %}
+    <li class="muted">Nenhum item produzido.</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="card">
+  <h2>Evidências relevantes</h2>
+
+  {% for item in draft.get("evidencias_relevantes", []) %}
+  <article class="record">
+    <span class="badge">
+      {{ item.get("classificacao", "NAO_CLASSIFICADO") }}
+    </span>
+
+    <p>{{ item.get("descricao", "-") }}</p>
+
+    {% if item.get("fonte") %}
+    <small>Fonte: {{ item.get("fonte") }}</small>
+    {% endif %}
+
+    {% if item.get("observacao") %}
+    <p class="record-description">
+      {{ item.get("observacao") }}
+    </p>
+    {% endif %}
+  </article>
+  {% else %}
+  <p class="empty">Nenhuma evidência destacada.</p>
+  {% endfor %}
+</section>
+
+<section class="card">
+  <h2>Pessoas e vínculos</h2>
+
+  <ul class="draft-list">
+    {% for item in draft.get("pessoas_e_vinculos", []) %}
+    <li>{{ item }}</li>
+    {% else %}
+    <li class="muted">Nenhum item produzido.</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="card">
+  <h2>Cronologia</h2>
+
+  <ol class="draft-list">
+    {% for item in draft.get("cronologia", []) %}
+    <li>{{ item }}</li>
+    {% else %}
+    <li class="muted">Nenhum item produzido.</li>
+    {% endfor %}
+  </ol>
+</section>
+
+<section class="card">
+  <h2>Hipóteses</h2>
+
+  {% for item in draft.get("hipoteses", []) %}
+  <article class="record">
+    <span class="badge">HIPOTESE</span>
+
+    <p>{{ item.get("descricao", "-") }}</p>
+
+    <small>
+      Base disponível:
+      {{ item.get("base_disponivel", "-") }}
+    </small>
+
+    <p class="record-description">
+      Limitação:
+      {{ item.get("limitacao", "-") }}
+    </p>
+  </article>
+  {% else %}
+  <p class="empty">Nenhuma hipótese apresentada.</p>
+  {% endfor %}
+</section>
+
+<section class="grid two-columns">
+  <article class="card">
+    <h2>Pendências</h2>
+
+    <ul class="draft-list">
+      {% for item in draft.get("pendencias", []) %}
+      <li>{{ item }}</li>
+      {% else %}
+      <li class="muted">Nenhuma pendência apresentada.</li>
+      {% endfor %}
+    </ul>
+  </article>
+
+  <article class="card">
+    <h2>Próximos passos sugeridos</h2>
+
+    <ul class="draft-list">
+      {% for item in draft.get("proximos_passos", []) %}
+      <li>{{ item }}</li>
+      {% else %}
+      <li class="muted">Nenhum próximo passo sugerido.</li>
+      {% endfor %}
+    </ul>
+  </article>
+</section>
+
+<section class="card">
+  <h2>Alertas éticos</h2>
+
+  <ul class="draft-list">
+    {% for item in draft.get("alertas_eticos", []) %}
+    <li>{{ item }}</li>
+    {% else %}
+    <li class="muted">
+      Nenhum alerta específico produzido.
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="card">
+  <h2>Métricas de geração</h2>
+
+  <dl class="details">
+    <dt>Modelo</dt>
+    <dd>{{ model }}</dd>
+
+    <dt>Tokens de prompt</dt>
+    <dd>{{ metrics.get("prompt_eval_count", "-") }}</dd>
+
+    <dt>Tokens gerados</dt>
+    <dd>{{ metrics.get("eval_count", "-") }}</dd>
+
+    <dt>Duração total</dt>
+    <dd>{{ metrics.get("total_duration", "-") }}</dd>
+  </dl>
+</section>
+{% endblock %}

@@ -26,6 +26,17 @@
     </p>
   </div>
 
+<div class="case-actions">
+  <form
+    method="post"
+    action="/ia/casos/{{ case['cnpd_id'] }}/rascunho"
+    target="_blank"
+  >
+    <button class="button secondary" type="submit">
+      Gerar rascunho com IA
+    </button>
+  </form>
+
   <form
     method="post"
     action="/relatorios/casos/{{ case['cnpd_id'] }}"
@@ -35,7 +46,7 @@
       Gerar relatório PDF
     </button>
   </form>
-</section>
+</div>
 
 <section class="grid two-columns case-summary-grid">
   <article class="card">
