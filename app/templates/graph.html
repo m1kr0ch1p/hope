@@ -1,0 +1,648 @@
+{% extends "base.html" %}
+
+{% block title %}{{ título_página }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.css">
+<style>
+  /* ── layout geral ── */
+  .graph-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .graph-sidebar {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  .graph-sidebar h2 {
+    font-size: 1rem;
+    margin: 0 0 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .graph-sidebar .node-count {
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+
+  .node-list-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.3rem;
+    cursor: pointer;
+    margin-bottom: 0.25rem;
+    transition: background 0.15s;
+    border-left: 3px solid transparent;
+    font-size: 0.9rem;
+  }
+
+  .node-list-item:hover {
+    background: var(--bg-hover);
+  }
+
+  .node-list-item.active {
+    background: var(--accent-light);
+    border-left-color: var(--accent);
+  }
+
+  .node-list-item .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .graph-panel {
+    position: relative;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    min-height: 70vh;
+    overflow: hidden;
+  }
+
+  #cy {
+    width: 100%;
+    height: 100%;
+    min-height: 65vh;
+    cursor: grab;
+  }
+
+  #cy:active {
+    cursor: grabbing;
+  }
+
+  .graph-controls {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 10;
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .graph-legend {
+    position: absolute;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    border-radius: 0.4rem;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.8rem;
+    max-width: 220px;
+    backdrop-filter: blur(4px);
+  }
+
+  .graph-legend .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0.2rem 0;
+  }
+
+  .graph-legend .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .badge-gráfico {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-weight: 500;
+  }
+
+  .badge-gráfico.ia_sugerido {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .badge-gráfico.confirmado {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .empty-graph-message {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .empty-graph-message .icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  .toast-mensagem {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: #1e293b;
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 0.4rem;
+    max-width: 360px;
+    z-index: 50;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  @media (max-width: 768px) {
+    .graph-layout {
+      grid-template-columns: 1fr;
+    }
+    .graph-sidebar {
+      max-height: 200px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/casos/{{ cnpd_id }}">← Voltar ao caso</a>
+
+<div class="case-header não-shadow">
+  <div class="case-title-block">
+    <p class="eyebrow">CNPD #{{ case.cnpd_id }} — {{ case.nome }}</p>
+    <h1>Conexões de investigação</h1>
+    <p class="muted small">
+      Grafo gerado pelo modelo <strong>{{ grafo.modelo_ia or 'qwen3.5:latest' }}</strong>
+      em {{ grafo.gerado_em or 'não gerado' }}
+      · Status: <span class="badge-gráfico
+        {% if grafo.status == 'CONFIRMADO' %}confirmado{% else %}ia_sugerido{% endif %}">
+        {{ grafo.status or 'RASCUNHO' }}
+      </span>
+    </p>
+  </div>
+
+  <div class="case-actions">
+    {% if grafo.status != 'CONFIRMADO' %}
+    <form method="post" action="/grafos/casos/{{ cnpd_id }}/confirmar">
+      <button class="button primary" type="submit">✅ Confirmar grafo</button>
+    </form>
+    {% endif %}
+    <form method="post" action="/grafos/casos/{{ cnpd_id }}/gerar"
+      onclick="return confirm('Isto regenerará o grafo com a IA. Continuar?')">
+      <button class="button secondary" type="submit"
+      >
+        🔄 Regenerar com IA
+      </button>
+    </form>
+    <button class="button" id="btn-editar-grafo" type="button"
+      onclick="toggleEditor()">✏️ Editar nó/aresta</button>
+    <button class="button secondary" id="btn-sincronizar" type="button"
+      onclick="sincronizarArestas()"
+      title="Reconstruir arestas automaticamente">
+      🔗 Vincular nós
+    </button>
+  </div>
+</div>
+
+<div class="grid two-columns" style="margin-top:1rem;">
+  <div>
+    <div class="graph-sidebar">
+      <h2>
+        Nós ({{ grafo.nós|length }})
+        <span class="node-count">clique para focar</span>
+      </h2>
+      {% if grafo.nós %}
+      <div id="node-list">
+        {% for nó in grafo.nós %}
+        {% set cor = {
+          'central': '#10b981',
+          'fonte_oficial': '#3b82f6',
+          'evidência': '#f59e0b',
+          'pessoa': '#8b5cf6',
+          'rede_social': '#ec4899',
+          'localização': '#14b8a6',
+          'documento': '#6b7280',
+          'investigador': '#f97316',
+        }.get(nó.grupo_nó, '#6b7280') %}
+        <div class="node-list-item" data-node-id="{{ nó.id }}"
+          style="border-left-color: {{ cor }};">
+          <span class="dot" style="background: {{ cor }};"></span>
+          <div>
+            <strong>{{ nó.rótulo }}</strong>
+            <small style="color: var(--muted); display:block;">
+              {{ nó.tipo_nó }} · {{ nó.subtítulo or nó.valor_principal or '' }}
+            </small>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="empty">Nenhum nó no grafo. Clique em "Regenerar com IA".</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div>
+    <div class="graph-panel">
+      <div class="graph-controls">
+        <button id="btn-foclus" class="button pequeno" title="Focar no nó selecionado">
+          🎯 Focar
+        </button>
+        <button id="btn-zoom-extent" class="button pequeno" title="Ajustar zoom">
+          ⊞ Zoom total
+        </button>
+        <button id="btn-lazy-layout" class="button pequeno" title="Forçar re-layout">
+          ⟳ Layout
+        </button>
+      </div>
+
+      {% if not grafo.nós %}
+      <div class="empty-graph-message">
+        <div class="icon">🕸️</div>
+        <p>Nenhuma conexão ainda.</p>
+        <p class="small">Gere um grafo com a IA para visualizar as relações.</p>
+      </div>
+      {% endif %}
+
+      <div id="cy"></div>
+
+      <div class="graph-legend" style="background: rgba(8,14,29,0.92); border-color: var(--border); color: var(--text);">
+        <div class="legend-row" style="color: var(--text);"><span class="legend-dot" style="background:#10b981;"></span> Central (desaparecido)</div>
+        <div class="legend-row" style="color: var(--text);"><span class="legend-dot" style="background:#3b82f6;"></span> Fonte oficial</div>
+        <div class="legend-row" style="color: var(--text);"><span class="legend-dot" style="background:#f59e0b;"></span> Evidência</div>
+        <div class="legend-row" style="color: var(--text);"><span class="legend-dot" style="background:#8b5cf6;"></span> Pessoa</div>
+        <div class="legend-row" style="color: var(--text);"><span class="legend-dot" style="background:#ec4899;"></span> Rede social</div>
+        <div class="legend-row" style="color: var(--text);"><span class="legend-dot" style="background:#14b8a6;"></span> Localização</div>
+        <div class="legend-row" style="color: var(--text);"><span class="legend-dot" style="background:#6b7280;"></span> Documento/outro</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="mensagem-sucesso" class="toast-mensagem" style="display:none;"></div>
+
+<script src="https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+<script>
+(function () {
+  const cnpdId = {{ cnpd_id }};
+  const nósData = {{ grafo.nós | default([]) | tojson }};
+  const arestasData = {{ grafo.arestas | default([]) | tojson }};
+  const statusGrafico = {{ grafo.status | default('RASCUNHO') | tojson }};
+
+  // ── mapeamento de cores por grupo ──
+  const cores = {
+    central: '#10b981',
+    fonte_oficial: '#3b82f6',
+    evidencia: '#f59e0b',
+    pessoa: '#8b5cf6',
+    rede_social: '#ec4899',
+    localização: '#14b8a6',
+    documento: '#6b7280',
+    investigador: '#f97316',
+  };
+
+  const tipoParaCor = {
+    'PESSOA_DESAPARECIDA': cores.central,
+    'PESSOA_RELACIONADA': cores.pessoa,
+    'DOCUMENTO': cores.documento,
+    'ENDEREÇO': cores.localização,
+    'EMAIL': cores.evidencia,
+    'TELEFONE': cores.evidencia,
+    'INSTAGRAM': cores.rede_social,
+    'FACEBOOK': cores.rede_social,
+    'WHATSAPP': cores.rede_social,
+    'X': cores.rede_social,
+    'TIKTOK': cores.rede_social,
+    'LINK': cores.documento,
+    'FATO': cores.evidencia,
+    'DATA': cores.documento,
+    'LOCAL_GEOGRÁFICO': cores.localização,
+    'VEÍCULO': cores.documento,
+    'PLACA': cores.documento,
+    'OUTRO': cores.documento,
+  };
+
+  // ── nós do Cytoscape ──
+  const nós = nósData.map(function (nó) {
+    const cor = cores[nó.grupo_nó] || tipoParaCor[nó.tipo_nó] || '#6b7280';
+    return {
+      data: {
+        id: String(nó.id),
+        label: nó.rótulo,
+        subtitle: nó.subtítulo || '',
+        principal: nó.valor_principal || '',
+        grupo: nó.grupo_nó || 'investigador',
+        tipo: nó.tipo_nó || 'OUTRO',
+        cor: cor,
+        confiança: nó.nível_confianca || 'IA_SUGERIDO',
+      },
+    };
+  });
+
+  // ── arestas do Cytoscape ──
+  const arestas = arestasData.map(function (a) {
+    return {
+      data: {
+        id: 'e' + a.id,
+        source: String(a.nó_origem),
+        target: String(a.nó_destino),
+        label: a.rótulo_aresta || a.tipo_relação || '',
+        tipo: a.tipo_relação || 'OUTRO',
+        confiança: a.nível_confianca || 'IA_SUGERIDO',
+      },
+    };
+  });
+
+  // ── inicializa Cytoscape ──
+  const element = document.getElementById('cy');
+  if (!element) return;
+
+  const cy = cytoscape({
+    container: element,
+    elements: { nodes: nós, edges: arestas },
+    style: [
+      {
+        selector: 'node',
+        style: {
+          'background-color': 'data(cor)',
+          label: 'data(label)',
+          color: '#1f2937',
+          'text-valign': 'bottom',
+          'text-margin-y': 8,
+          'font-size': '12px',
+          'font-weight': 500,
+          'text-wrap': 'wrap',
+          'text-max-width': '100px',
+          width: 36,
+          height: 36,
+          'border-color': '#ffffff',
+          'border-width': 2,
+          'shadow-blur': 4,
+          'shadow-color': '#00000080',
+          'shadow-offset-x': 0,
+          'shadow-offset-y': 2,
+        },
+      },
+      {
+        selector: 'node[label = ""]',
+        style: {
+          label: '',
+        },
+      },
+      {
+        selector: 'node.grupo_central',
+        style: {
+          width: 50,
+          height: 50,
+          'border-color': '#10b981',
+          'border-width': 3,
+          'font-size': '13px',
+        },
+      },
+      {
+        selector: 'edge',
+        style: {
+          width: 1.5,
+          'line-color': '#9ca3af',
+          'target-arrow-shape': 'triangle',
+          'target-arrow-color': '#9ca3af',
+          'curve-style': 'bezier',
+          label: 'data(label)',
+          color: '#6b7280',
+          'font-size': '10px',
+          'text-rotation': 'autorotate',
+          'text-margin-y': -6,
+          'label-bg-color': '#ffffffcc',
+          'label-bg-opacity': 0.85,
+          'label-border-color': '#9ca3af',
+          'label-border-width': 0.5,
+        },
+      },
+      {
+        selector: 'edge.confiança-alta',
+        style: {
+          'line-color': '#10b981',
+          'target-arrow-color': '#10b981',
+        },
+      },
+      {
+        selector: 'edge.confiança-média',
+        style: {
+          'line-color': '#f59e0b',
+          'target-arrow-color': '#f59e0b',
+        },
+      },
+      {
+        selector: 'edge.confiança-baixa',
+        style: {
+          'line-color': '#ef4444',
+          'target-arrow-color': '#ef4444',
+          'line-style': 'dashed',
+        },
+      },
+    ],
+    layout: {
+      name: 'breadthfirst',
+      directed: true,
+      padding: 30,
+      spacingFactor: 1.2,
+      animate: true,
+      animationDuration: 400,
+      animationEasing: 'ease-out',
+    },
+    wheelSensitivity: 0.3,
+    minZoom: 0.3,
+    maxZoom: 3,
+  });
+
+  // ── adicionar classes por confiança ──
+  cy.edges().forEach(function (edgeEl) {
+    const conf = edgeEl.data('confiança');
+    if (conf === 'ALTA') edgeEl.addClass('confiança-alta');
+    else if (conf === 'MÉDIA') edgeEl.addClass('confiança-média');
+    else if (conf === 'BAIXA') edgeEl.addClass('confiança-baixa');
+  });
+
+  cy.nodes().forEach(function (nodeEl) {
+    if (nodeEl.data('grupo') === 'central') nodeEl.addClass('grupo-central');
+  });
+
+  // ── tooltip ao passar o mouse ──
+  cy.on('mouseover', 'node', function (evt) {
+    const el = evt.target;
+    const d = el.data();
+    const titulo = d.label;
+    const subtitulo = d.subtitle ? '<br><small>' + d.subtitle + '</small>' : '';
+    const principal = d.principal ? '<br><b>Valor:</b> ' + d.principal : '';
+    const tooltip = document.createElement('div');
+    tooltip.className = 'cy-tooltip';
+    tooltip.innerHTML =
+      '<strong>' + d.label + '</strong>' +
+      '<br><small>' + d.tipo + ' · ' + d.grupo + '</small>' +
+      subtitulo + principal;
+    tooltip.style.position = 'absolute';
+    tooltip.style.background = '#1e293b';
+    tooltip.style.color = '#fff';
+    tooltip.style.padding = '6px 10px';
+    tooltip.style.borderRadius = '4px';
+    tooltip.style.fontSize = '12px';
+    tooltip.style.pointerEvents = 'none';
+    tooltip.style.zIndex = 1000;
+    tooltip.style.maxWidth = '260px';
+    tooltip.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+    document.body.appendChild(tooltip);
+
+    const boundingBox = el.boundingBox();
+    const cx = boundingBox.x + boundingBox.w / 2;
+    const cy2 = boundingBox.y;
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    tooltip.style.left = (cx + 12 + scrollX) + 'px';
+    tooltip.style.top = (cy2 - 10 + scrollY) + 'px';
+
+    setTimeout(function () {
+      if (tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
+    }, 3000);
+  });
+
+  cy.on('mouseover', 'edge', function (evt) {
+    const el = evt.target;
+    const d = el.data();
+    const tooltip = document.createElement('div');
+    tooltip.style.position = 'absolute';
+    tooltip.style.background = '#1e293b';
+    tooltip.style.color = '#fff';
+    tooltip.style.padding = '4px 8px';
+    tooltip.style.borderRadius = '4px';
+    tooltip.style.fontSize = '11px';
+    tooltip.style.pointerEvents = 'none';
+    tooltip.style.zIndex = 1000;
+    tooltip.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+    tooltip.textContent = d.label + ' · ' + d.confiança;
+    document.body.appendChild(tooltip);
+
+    const bb = el.boundingBox();
+    if (bb) {
+      const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+      const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+      tooltip.style.left = (bb.x + bb.w / 2 + 12 + scrollX) + 'px';
+      tooltip.style.top = (bb.y - 4 + scrollY) + 'px';
+    }
+    setTimeout(function () {
+      if (tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
+    }, 2500);
+  });
+
+  // ── click no nó: focar e selecionar na sidebar ──
+  cy.on('tap', 'node', function (evt) {
+    const el = evt.target;
+    cy.animate({
+      center: { eles: el },
+      zoom: 1.5,
+      duration: 300,
+      easing: 'ease-out',
+    });
+    // ativa item na sidebar
+    document.querySelectorAll('.node-list-item').forEach(function (item) {
+      item.classList.remove('active');
+    });
+    const item = document.querySelector('.node-list-item[data-node-id="' + el.data().id + '"]');
+    if (item) item.classList.add('active');
+  });
+
+  // ── clique na sidebar foca no grafo ──
+  document.querySelectorAll('.node-list-item').forEach(function (item) {
+    item.addEventListener('click', function () {
+      const id = this.dataset.nodeId;
+      const nodeEl = cy.getElementById(id);
+      if (nodeEl.length) {
+        cy.animate({
+          center: { eles: nodeEl },
+          zoom: 1.5,
+          duration: 300,
+          easing: 'ease-out',
+        });
+        document.querySelectorAll('.node-list-item').forEach(function (i) {
+          i.classList.remove('active');
+        });
+        this.classList.add('active');
+      }
+    });
+  });
+
+  // ── botões de controle ──
+  document.getElementById('btn-zoom-extent')?.addEventListener('click', function () {
+    cy.animate({ zoom: 1, duration: 300 });
+    cy.fit({ padding: 30, animationDuration: 300 });
+  });
+
+  document.getElementById('btn-lazy-layout')?.addEventListener('click', function () {
+    cy.layout({
+      name: 'breadthfirst',
+      directed: true,
+      padding: 30,
+      spacingFactor: 1.2,
+      animate: true,
+      animationDuration: 500,
+    }).run();
+  });
+
+  // focar automático se houver nó central
+  if (cy.nodes().length > 0) {
+    const centralNode = cy.nodes().filter(function (n) {
+      return n.data('grupo') === 'central';
+    });
+    if (centralNode.length) {
+      setTimeout(function () {
+        cy.animate({ center: { eles: centralNode }, zoom: 1.6, duration: 500 });
+      }, 600);
+    }
+  }
+
+  // toast de sucesso se regenerado
+  const toast = document.getElementById('mensagem-sucesso');
+  if (toast) {
+    toast.textContent = 'Grafo regenerado com sucesso.';
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 4000);
+  }
+  // ── variáveis expostas para o editor de grafo ──
+  window.nósData = nósData;
+  window.arestasData = arestasData;
+  window.cnpdId = cnpdId;
+  window.cores = cores;
+  window.tipoParaCor = tipoParaCor;
+  window.cy = cy;
+
+  // ── carregar editor de grafo ──
+  const editorScript = document.createElement('script');
+  editorScript.src = '/static/js/graph-editor.js';
+  editorScript.onload = () => {
+    if (typeof initGraphEditor === 'function') {
+      // Passa as referências diretamente para o editor
+      initGraphEditor(cy, nósData, arestasData, cnpdId, cores, tipoParaCor);
+    }
+  };
+  document.head.appendChild(editorScript);
+})();
+</script>
+{% endblock %}

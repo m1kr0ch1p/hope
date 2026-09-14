@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ case['nome'] }} | HOPE
+{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/">← Voltar aos casos</a>
+
+<section class="case-header">
+  <div class="case-title-block">
+    <p class="eyebrow">CNPD #{{ case['cnpd_id'] }}</p>
+    <h1>{{ case['nome'] }}</h1>
+    <p class="muted">
+      Status:
+      <span class="badge {{ case['status_fonte'].lower() }}">
+        {{ case['status_fonte'] }}
+      </span>
+    </p>
+  </div>
+
+  <div class="case-actions">
+    <form method="post" action="/ia/casos/{{ case['cnpd_id'] }}/rascunho" target="_blank">
+      <button class="button secondary" type="submit">
+        Gerar rascunho com IA
+      </button>
+    </form>
+
+    <form method="post" action="/relatorios/casos/{{ case['cnpd_id'] }}" target="_blank">
+      <button class="button primary" type="submit">
+        Gerar relatório PDF
+      </button>
+    </form>
+
+    <a class="button" href="/grafos/casos/{{ case['cnpd_id'] }}">
+      🕸️ Ver grafo de conexões
+    </a>
+  </div>
+</section>
+
+<section class="grid two-columns case-summary-grid">
+  <article class="card source-card">
+    <h2>Dados da fonte</h2>
+    <dl class="details">
+      <dt>Desaparecimento</dt>
+      <dd>{{ case['data_desaparecimento'] or '-' }}</dd>
+      <dt>Data do registro</dt>
+      <dd>{{ case['data_registro_desaparecimento'] or '-' }}</dd>
+      <dt>Local</dt>
+      <dd>{{ case['local_registro'] or '-' }}</dd>
+      <dt>UF</dt>
+      <dd>{{ case['uf_registro'] or '-' }}</dd>
+      <dt>Sexo</dt>
+      <dd>{{ case['sexo'] or '-' }}</dd>
+      <dt>Idade</dt>
+      <dd>{{ case['idade_desaparecimento'] or '-' }}</dd>
+      <dt>Localização confirmada</dt>
+      <dd>{{ case['localizacao_confirmada'] or '-' }}</dd>
+    </dl>
+  </article>
+
+  <article class="card media-card" id="midias">
+    <h2>Imagens</h2>
+
+    <div class="media-gallery" aria-label="Galeria de imagens">
+      {% for item in media %}
+        {% if item['mime_type'] and item['mime_type'].startswith('image/') %}
+        <figure class="media-item">
+          <a href="/midias/{{ item['id'] }}" target="_blank" rel="noreferrer">
+            <img
+              class="case-photo"
+              src="/midias/{{ item['id'] }}"
+              alt="{{ item['nome_original'] or 'Imagem do caso' }}"
+              loading="lazy"
+            >
+          </a>
+          <figcaption>
+             <span>{{ item['nome_original'] or '-' }}</span>
+             <span class="media-origin">{{ item['origem'] }}</span>
+             <form method="post" action="/casos/{{ case['cnpd_id'] }}/midias/{{ item['id'] }}/remover" style="display:inline; margin-left:0.5rem;">
+               <button class="button pequeno danger" type="submit" onclick="return confirm('Remover esta imagem?')">Remover</button>
+             </form>
+           </figcaption>
+        </figure>
+        {% endif %}
+      {% else %}
+      <p class="empty">Nenhuma imagem cadastrada.</p>
+      {% endfor %}
+    </div>
+
+    <form class="upload-form media-upload" method="post" action="/casos/{{ case['cnpd_id'] }}/upload" enctype="multipart/form-data">
+      <label class="file-label">
+        <span>Selecionar imagem</span>
+        <input type="file" name="file" accept="image/*" required>
+      </label>
+      <input name="descricao" placeholder="Descrição da imagem">
+      <button class="button" type="submit">Enviar imagem</button>
+    </form>
+  </article>
+</section>
+
+<section class="card" id="evidencias">
+  <h2>Pesquisas abertas e evidências</h2>
+  <p class="small muted">
+    Registre consultas abertas, Google Dorks, URLs, e-mails, telefones,
+    perfis sociais e outros achados.
+  </p>
+
+  <form class="investigation-form" method="post" action="/casos/{{ case['cnpd_id'] }}/evidencias">
+    <label>Tipo<select name="tipo"><option>CONSULTA_BUSCA</option><option>URL</option><option>EMAIL</option><option>TELEFONE</option><option>PERFIL_SOCIAL</option><option>DOCUMENTO</option><option>NOTICIA</option><option>OUTRO</option></select></label>
+    <label>Título / consulta / Google Dork<input name="titulo" placeholder='Ex.: site:instagram.com "Nome"'></label>
+    <label>Resultado ou valor principal<input name="valor" placeholder="URL, e-mail, telefone ou resultado" required></label>
+    <label>URL da fonte<input name="url_fonte" type="url" placeholder="https://..."></label>
+    <label>Classificação<select name="classificacao"><option>DADO_BRUTO</option><option>FATO_CONFIRMADO</option><option>HIPOTESE</option><option>PENDENCIA</option></select></label>
+    <label>Nível de confiança<select name="nivel_confianca"><option>NAO_AVALIADO</option><option>BAIXO</option><option>MEDIO</option><option>ALTO</option></select></label>
+    <label class="full-width">Descrição e contexto<textarea name="descricao" placeholder="Contexto, método e relevância do achado."></textarea></label>
+    <button class="button primary" type="submit">Adicionar evidência</button>
+  </form>
+
+  <div class="records">
+  {% for item in evidences %}
+  <article class="record">
+    <div class="record-title-row"><span class="badge">{{ item['classificacao'] }}</span><strong>{{ item['titulo'] or item['tipo'] }}</strong>
+      <form method="post" action="/casos/{{ case['cnpd_id'] }}/evidencias/{{ item['id'] }}/remover" style="display:inline;">
+        <button class="button pequeno danger" type="submit" onclick="return confirm('Remover esta evidência?')">Remover</button>
+      </form>
+    </div>
+    <p class="record-value">{{ item['valor'] }}</p>
+    {% if item['url_fonte'] %}<a class="record-link" href="{{ item['url_fonte'] }}" target="_blank" rel="noreferrer">Abrir fonte</a>{% endif %}
+    {% if item['descricao'] %}<p class="record-description">{{ item['descricao'] }}</p>{% endif %}
+  </article>
+  {% else %}<p class="empty">Nenhuma evidência cadastrada.</p>{% endfor %}
+  </div>
+</section>
+
+<section class="grid two-columns investigation-grid">
+  <article class="card" id="pessoas">
+    <h2>Parentes e pessoas próximas</h2>
+    <p class="small muted">Registre vínculos, contatos e contexto da relação.</p>
+
+    <form class="investigation-form" method="post" action="/casos/{{ case['cnpd_id'] }}/pessoas">
+      <label>Nome<input name="nome" placeholder="Nome completo" required></label>
+      <label>Relação<input name="tipo_relacao" placeholder="Mãe, amigo, colega..."></label>
+      <label>E-mail<input name="email" type="email" placeholder="email@exemplo.com"></label>
+      <label>Telefone<input name="telefone" placeholder="+55 ..."></label>
+      <label>Localidade<input name="localidade" placeholder="Cidade/UF"></label>
+      <label>Fonte URL<input name="fonte_url" type="url" placeholder="https://..."></label>
+      <label class="full-width">Descrição da relação<textarea name="descricao_relacao" placeholder="Como o vínculo foi identificado?"></textarea></label>
+      <button class="button primary" type="submit">Adicionar pessoa</button>
+    </form>
+
+    <div class="records">
+      {% for item in people %}
+      <article class="record"><strong>{{ item['nome'] }}</strong><p>{{ item['tipo_relacao'] or 'Relação não informada' }}</p><small>{{ item['telefone'] or '' }}{% if item['telefone'] and item['email'] %} · {% endif %}{{ item['email'] or '' }}</small>
+        <form method="post" action="/casos/{{ case['cnpd_id'] }}/pessoas/{{ item['id'] }}/remover" style="display:inline; margin-left:0.5rem;">
+          <button class="button pequeno danger" type="submit" onclick="return confirm('Remover esta pessoa?')">Remover</button>
+        </form>
+      </article>
+      {% else %}<p class="empty">Nenhuma pessoa relacionada.</p>{% endfor %}
+    </div>
+  </article>
+
+  <article class="card" id="sociais">
+    <h2>Redes sociais</h2>
+    <p class="small muted">Cadastre perfis do desaparecido ou de pessoas relacionadas.</p>
+
+    <form class="investigation-form" method="post" action="/casos/{{ case['cnpd_id'] }}/sociais">
+      <label>Plataforma<input name="plataforma" placeholder="Instagram, Facebook, X..." required></label>
+      <label>Username<input name="username" placeholder="@usuario"></label>
+      <label>ID do perfil<input name="perfil_id" placeholder="ID da conta"></label>
+      <label>URL do perfil<input name="perfil_url" type="url" placeholder="https://..."></label>
+      <label>Nome de exibição<input name="nome_exibicao" placeholder="Nome visível"></label>
+      <label class="full-width">Observação<textarea name="observacao" placeholder="Contexto da associação e fonte."></textarea></label>
+      <button class="button primary" type="submit">Adicionar conta</button>
+    </form>
+
+    <div class="records">
+      {% for item in socials %}
+      <article class="record"><strong>{{ item['plataforma'] }}</strong><p>{{ item['username'] or '-' }}{% if item['perfil_id'] %} · ID: {{ item['perfil_id'] }}{% endif %}</p>{% if item['perfil_url'] %}<a class="record-link" href="{{ item['perfil_url'] }}" target="_blank" rel="noreferrer">Abrir perfil</a>{% endif %}
+        <form method="post" action="/casos/{{ case['cnpd_id'] }}/sociais/{{ item['id'] }}/remover" style="display:inline; margin-left:0.5rem;">
+          <button class="button pequeno danger" type="submit" onclick="return confirm('Remover esta conta social?')">Remover</button>
+        </form>
+      </article>
+      {% else %}<p class="empty">Nenhuma conta cadastrada.</p>{% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="card map-section" id="mapa">
+  <h2>Localizações geográficas</h2>
+  <p class="small muted">Adicione coordenadas e uma flag para explicar o significado do ponto.</p>
+
+  <form class="investigation-form location-form" method="post" action="/casos/{{ case['cnpd_id'] }}/localizacoes">
+    <label>Flag / título<input name="titulo" placeholder="Último lugar visto" required></label>
+    <label>Latitude<input name="latitude" type="number" step="any" placeholder="-27.5954" required></label>
+    <label>Longitude<input name="longitude" type="number" step="any" placeholder="-48.5480" required></label>
+    <label>Tipo de local<select name="tipo_local"><option>ULTIMO_LOCAL_CONHECIDO</option><option>LOCAL_DESAPARECIMENTO</option><option>AVISTAMENTO</option><option>RESIDENCIA</option><option>OUTRO</option></select></label>
+    <label>Data do evento<input name="data_evento" placeholder="AAAA-MM-DD"></label>
+    <label>Fonte URL<input name="fonte_url" type="url" placeholder="https://..."></label>
+    <label class="full-width">Descrição<textarea name="descricao" placeholder="Contexto, precisão e origem da coordenada."></textarea></label>
+    <button class="button primary" type="submit">Adicionar ponto</button>
+  </form>
+
+  <div class="map-frame"><div id="case-map" class="case-map" aria-label="Mapa de localizações cadastradas"></div></div>
+
+  <div class="records location-records">
+    {% for item in locations %}
+    <article class="record"><div class="record-title-row"><span class="badge">{{ item['tipo_local'] }}</span><strong>{{ item['titulo'] }}</strong>
+      <form method="post" action="/casos/{{ case['cnpd_id'] }}/localizacoes/{{ item['id'] }}/remover" style="display:inline;">
+        <button class="button pequeno danger" type="submit" onclick="return confirm('Remover esta localização?')">Remover</button>
+      </form>
+    </div><p>{{ item['latitude'] }}, {{ item['longitude'] }}</p>{% if item['descricao'] %}<small>{{ item['descricao'] }}</small>{% endif %}</article>
+    {% else %}<p class="empty">Nenhum ponto geográfico cadastrado.</p>{% endfor %}
+  </div>
+</section>
+
+<section class="card" id="anotacoes">
+  <h2>Anotações de análise e dados livres</h2>
+  <p class="small muted">Mantenha fatos, hipóteses, pendências e próximos passos separados.</p>
+
+  <form class="investigation-form" method="post" action="/casos/{{ case['cnpd_id'] }}/anotacoes">
+    <label>Categoria<select name="categoria"><option>ANOTACAO</option><option>FATO_CONFIRMADO</option><option>HIPOTESE</option><option>PENDENCIA</option><option>PROXIMO_PASSO</option></select></label>
+    <label>Classificação<select name="classificacao"><option>HIPOTESE</option><option>FATO</option><option>DADO_LIVRE</option></select></label>
+    <label class="full-width">Conteúdo<textarea name="conteudo" placeholder="Anotação, análise ou dado livre" required></textarea></label>
+    <button class="button primary" type="submit">Salvar anotação</button>
+  </form>
+
+  <div class="records">
+    {% for item in notes %}
+    <article class="record"><div class="record-title-row"><span class="badge">{{ item['categoria'] }}</span><span class="badge">{{ item['classificacao'] }}</span>
+      <form method="post" action="/casos/{{ case['cnpd_id'] }}/anotacoes/{{ item['id'] }}/remover" style="display:inline;">
+        <button class="button pequeno danger" type="submit" onclick="return confirm('Remover esta anotação?')">Remover</button>
+      </form>
+    </div><p>{{ item['conteudo'] }}</p></article>
+    {% else %}<p class="empty">Nenhuma anotação cadastrada.</p>{% endfor %}
+  </div>
+</section>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  const points = [
+    {% for item in locations %}
+    { latitude: {{ item['latitude']|float }}, longitude: {{ item['longitude']|float }}, titulo: {{ item['titulo']|tojson }}, tipo: {{ item['tipo_local']|tojson }}, descricao: {{ (item['descricao'] or '')|tojson }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  const mapElement = document.getElementById("case-map");
+  if (!mapElement || typeof L === "undefined") return;
+
+  const map = L.map(mapElement, { center: [-14.2350, -51.9253], zoom: 4, zoomControl: true });
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap contributors" }).addTo(map);
+
+  const bounds = [];
+  points.forEach(function (point) {
+    const position = [point.latitude, point.longitude];
+    const popup = "<strong>" + escapeHtml(point.titulo) + "</strong><br>" + escapeHtml(point.tipo) + (point.descricao ? "<br>" + escapeHtml(point.descricao) : "");
+    L.marker(position).addTo(map).bindPopup(popup);
+    bounds.push(position);
+  });
+
+  if (bounds.length === 1) map.setView(bounds[0], 13);
+  if (bounds.length > 1) map.fitBounds(bounds, { padding: [30, 30] });
+  setTimeout(function () { map.invalidateSize(); }, 180);
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, function (character) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" }[character];
+    });
+  }
+}());
+</script>
+{% endblock %}

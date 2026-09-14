@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CNPD-OSINT{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+  {% block head %}{% endblock %}
+<style id="privacy-notice-style">
+.privacy-notice {
+  margin: 1rem 0 1.5rem;
+  padding: 1rem 1.125rem;
+  border: 1px solid #c98a00;
+  border-left: 5px solid #e3a008;
+  border-radius: .5rem;
+  background: #fff8df;
+  color: #3b2f00;
+}
+.privacy-notice h2 { margin: 0 0 .5rem; font-size: 1rem; }
+.privacy-notice p { margin: .4rem 0; }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><a href="/">HOPE</a></div>
+      <nav class="main-nav">
+        <a href="/">Casos</a>
+        <a href="/sincronizar">Sincronização</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    Uso local e controlado. Dados da fonte pública devem ser tratados com finalidade legítima, segurança e revisão humana.
+  </footer>
+</body>
+</html>

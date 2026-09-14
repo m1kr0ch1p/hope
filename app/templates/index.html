@@ -1,0 +1,122 @@
+<style id="case-header-actions-style">
+.case-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.case-header-actions > a,
+.case-header-actions > button {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .case-header-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+</style>
+{% extends "base.html" %}
+{% block title %}Casos | HOPE{% endblock %}
+{% block content %}
+<section class="privacy-notice" role="alert" aria-labelledby="privacy-notice-title">
+  <h2 id="privacy-notice-title">Proteção de crianças e adolescentes</h2>
+  <p>
+    Esta aplicação não armazena localmente registros de pessoas cuja idade atual
+    ou idade na data do desaparecimento seja inferior a 18 anos. Quando essa
+    condição é identificada nos dados de origem, o registro é descartado antes
+    da persistência local.
+  </p>
+  <p>
+    Esta é uma medida técnica de minimização de dados e proteção de crianças e
+    adolescentes. Casos que envolvam menores devem ser tratados somente pelos
+    fluxos institucionais, autoridades e sistemas formalmente autorizados.
+  </p>
+</section>
+
+<section class="page-head">
+  <div>
+    <h1>Casos CNPD</h1>
+    <p>{{ total }} caso(s) armazenado(s) localmente.</p>
+  </div>
+  
+<div class="case-header-actions">
+<a class="button primary" href="/sincronizar">Sincronizar CNPD</a>
+<a class="button secondary" href="/guia-procedimentos" target="_blank" rel="noopener noreferrer">Guia de procedimentos OSINT</a>
+</div>
+
+</section>
+
+<form class="filters" method="get" action="/">
+  <label>
+    Busca
+    <input name="q" value="{{ q }}" placeholder="Nome, ID ou município">
+  </label>
+  <label>
+    UF
+    <select name="uf">
+      <option value="">Todas</option>
+      {% for item in ufs %}
+      <option value="{{ item }}" {% if item == selected_uf %}selected{% endif %}>{{ item }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>
+    Status da fonte
+    <select name="status">
+      <option value="">Todos</option>
+      {% for item in ['ATIVO_NA_FONTE', 'AUSENTE_EM_UMA_COLETA', 'AUSENTE_EM_MULTIPLAS_COLETAS', 'PENDENTE_DE_REVISAO', 'ARQUIVADO_POR_CONFIRMACAO'] %}
+      <option value="{{ item }}" {% if item == selected_status %}selected{% endif %}>{{ item.replace('_', ' ') }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button class="button" type="submit">Filtrar</button>
+  <a class="button secondary" href="/">Limpar</a>
+</form>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>CNPD ID</th>
+        <th>Nome</th>
+        <th>UF</th>
+        <th>Local</th>
+        <th>Desaparecimento</th>
+        <th>Status fonte</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for case in cases %}
+      <tr>
+        <td>#{{ case['cnpd_id'] }}</td>
+        <td>{{ case['nome'] }}</td>
+        <td>{{ case['uf_registro'] or '-' }}</td>
+        <td>{{ case['local_registro'] or '-' }}</td>
+        <td>{{ case['data_desaparecimento'] or '-' }}</td>
+        <td><span class="badge {{ case['status_fonte'].lower() }}">{{ case['status_fonte'].replace('_', ' ') }}</span></td>
+        <td><a class="table-link" href="/casos/{{ case['cnpd_id'] }}">Abrir</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty">Nenhum caso encontrado. Execute uma sincronização para carregar dados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if total_pages > 1 %}
+<nav class="pagination" aria-label="Paginação">
+  {% if page > 1 %}
+  <a href="/?q={{ q }}&uf={{ selected_uf }}&status={{ selected_status }}&page={{ page - 1 }}&per_page={{ per_page }}">← Anterior</a>
+  {% endif %}
+  <span>Página {{ page }} de {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <a href="/?q={{ q }}&uf={{ selected_uf }}&status={{ selected_status }}&page={{ page + 1 }}&per_page={{ per_page }}">Próxima →</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% endblock %}
