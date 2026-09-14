@@ -1,8 +1,27 @@
-fastapi>=0.115,<1.0
-uvicorn[standard]>=0.30,<1.0
-jinja2>=3.1,<4.0
-python-multipart>=0.0.9,<1.0
-requests>=2.32,<3.0
-reportlab>=4.2,<5.0
-Pillow>=10.0,<12.0
-staticmap>=0.5,<1.0
+# HOPE — CNPD-OSINT
+# FastAPI application for missing persons OSINT investigations
+# Python 3.11+
+
+# ── Web framework ──────────────────────────────────────────────────────────
+fastapi>=0.141.0
+uvicorn[standard]>=0.52.0
+
+# ── HTTP client (Ollama integration) ──────────────────────────────────────
+requests>=2.31.0
+
+# ── Template engine (Jinja2 via FastAPI) ───────────────────────────────────
+Jinja2>=3.1.0
+python-multipart>=0.0.32
+
+# ── PDF generation ─────────────────────────────────────────────────────────
+reportlab>=5.0.0
+
+# ── Image processing (static maps, media handling) ────────────────────────
+Pillow>=10.0.0
+staticmap>=0.3.0
+
+# ── Environment / config ───────────────────────────────────────────────────
+python-dotenv>=1.0.0
+
+# ── Optional: async DB driver for future PostgreSQL migration ──────────────
+# aiomysql / asyncpg / aiosqlite — needed only when switching from SQLite
