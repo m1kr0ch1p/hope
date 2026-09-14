@@ -2,11 +2,11 @@
 
 **HOPE** é uma aplicação local para auxiliar o gerenciamento de investigações
 OSINT relacionadas a pessoas desaparecidas. Ela funciona como um agregador
-estruturado de dados: importa registros públicos do **Cadastro Nacional de
-Pessoas Desaparecidas (CNPD)**, organiza evidências inseridas pelo
-investigador e oferece recursos para interpretação, análise, georreferenciamento,
-enriquecimento assistido por IA local, construção de grafos de conexões e
-documentação dos casos.
+estruturado de dados: importa registros públicos do **[Cadastro Nacional de
+Pessoas Desaparecidas (CNPD)](https://cnpd.mj.gov.br/painel-publico)**, d
+o Ministério da Justiça, organiza evidências inseridas pelo investigador e 
+oferece recursos para interpretação, análise, georreferenciamento, enriquecimento
+assistido por IA local, construção de grafos de conexões e documentação dos casos.
 
 A ferramenta **não substitui** autoridades competentes, protocolos institucionais
 ou validação humana. Seu propósito é apoiar a organização do trabalho
@@ -21,7 +21,7 @@ e facilitar a produção de rascunhos e relatórios revisáveis.
 
 ---
 
-## 1. Finalidde
+## 1. Finalidade
 
 Investigações sobre pessoas desaparecidas podem envolver registros públicos,
 pesquisas abertas na internet, consultas com operadores avançados, conteúdos de
@@ -66,7 +66,7 @@ premissas centrais do projeto.
 ```text
 HOPE — CNPD-OSINT
 ├── README.md
-├── run.py                        # Entrada para uvicorn com reload
+├── run.py                       # Entrada para uvicorn com reload
 ├── app/
 │   ├── config.py                # Caminhos, URLs, parâmetros do Ollama, CNPD
 │   ├── database.py              # Inicialização e acesso ao SQLite
